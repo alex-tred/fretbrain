@@ -1,0 +1,2191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Fretbrain</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Fretbrain">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#0a0a0c">
+<link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='115' fill='%230a0a0c'/%3E%3Ctext x='256' y='240' font-family='Arial Black,sans-serif' font-size='180' font-weight='900' fill='%23f0c040' text-anchor='middle' dominant-baseline='middle'%3EFB%3C/text%3E%3Ctext x='256' y='370' font-family='Arial,sans-serif' font-size='68' font-weight='700' fill='%23efefef' text-anchor='middle' dominant-baseline='middle' letter-spacing='4'%3EFRETBRAIN%3C/text%3E%3C/svg%3E">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:#0a0a0c; --surf:#141418; --surf2:#1c1c22; --surf3:#242430;
+  --bdr:#252530; --bdr2:#32323f;
+  --gold:#f0c040; --gold-d:rgba(240,192,64,0.12);
+  --blue:#4ab0f0; --blue-d:rgba(74,176,240,0.12);
+  --green:#50e090; --green-d:rgba(80,224,144,0.12);
+  --red:#f05050; --red-d:rgba(240,80,80,0.12);
+  --purple:#c060f0; --purple-d:rgba(192,96,240,0.12);
+  --orange:#f08040; --orange-d:rgba(240,128,64,0.12);
+  --teal:#40d0c0; --teal-d:rgba(64,208,192,0.12);
+  --text:#efefef; --muted:#787890; --muted2:#505060;
+  --r:14px; --r2:10px;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+html,body{height:100%;overflow:hidden;}
+body{background:var(--bg);color:var(--text);font-family:"Outfit",sans-serif;font-size:15px;}
+
+/* screens */
+.screen{position:absolute;inset:0;display:none;flex-direction:column;overflow:hidden;}
+.screen.active{display:flex;}
+.scroll{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;}
+
+/* nav */
+.nav{display:flex;border-top:1px solid var(--bdr);background:var(--bg);flex-shrink:0;z-index:10;}
+.nb{flex:1;padding:10px 4px 14px;display:flex;flex-direction:column;align-items:center;gap:3px;
+  cursor:pointer;border:none;background:none;color:var(--muted);font-family:"Outfit",sans-serif;
+  font-size:10px;letter-spacing:0.5px;transition:color 0.15s;}
+.nb.active{color:var(--gold);}
+.nb .ni{font-size:20px;line-height:1;}
+
+/* common cards */
+.card{background:var(--surf);border:1px solid var(--bdr);border-radius:var(--r);padding:16px;}
+.card2{background:var(--surf2);border:1px solid var(--bdr2);border-radius:var(--r2);padding:14px;}
+.pill{background:var(--surf);border:1px solid var(--bdr);border-radius:50px;padding:6px 14px;font-size:12px;}
+.pill .pv{color:var(--gold);font-weight:600;}
+
+/* section label */
+.slabel{font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);padding:0 20px 10px;}
+
+/* page headers */
+.phead{padding:20px 20px 14px;flex-shrink:0;}
+.phead h1{font-family:"Bebas Neue",sans-serif;font-size:30px;letter-spacing:1px;}
+.phead p{font-size:13px;color:var(--muted);margin-top:3px;}
+
+/* top bars */
+.topbar{display:flex;align-items:center;gap:12px;padding:14px 20px;border-bottom:1px solid var(--bdr);flex-shrink:0;}
+.topbar-title{font-family:"Bebas Neue",sans-serif;font-size:18px;letter-spacing:0.5px;flex:1;}
+.back{width:34px;height:34px;background:var(--surf);border:1px solid var(--bdr);border-radius:8px;
+  display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:16px;flex-shrink:0;}
+
+/* buttons */
+.btn-gold{background:var(--gold);color:var(--bg);border:none;border-radius:var(--r2);padding:14px;
+  font-family:"Bebas Neue",sans-serif;font-size:18px;letter-spacing:1px;cursor:pointer;width:100%;}
+.btn-ghost{background:var(--surf);color:var(--text);border:1px solid var(--bdr);border-radius:var(--r2);
+  padding:12px;font-family:"Outfit",sans-serif;font-size:14px;font-weight:500;cursor:pointer;width:100%;}
+.btn-ghost:active,.btn-gold:active{opacity:0.82;}
+
+/* callout */
+.callout{background:var(--gold-d);border-left:3px solid var(--gold);border-radius:0 8px 8px 0;
+  padding:12px 14px;margin:12px 0;font-size:13px;line-height:1.6;color:#ddd;}
+.callout strong{color:var(--gold);}
+
+/* formula box */
+.formula{background:var(--surf2);border:1px solid var(--bdr2);border-radius:10px;
+  padding:12px 16px;margin:10px 0;font-family:"Bebas Neue",sans-serif;font-size:16px;
+  letter-spacing:1px;color:var(--gold);text-align:center;line-height:1.5;}
+
+/* note pills row */
+.note-row{display:flex;gap:5px;flex-wrap:wrap;margin:10px 0;}
+.note-pill{background:var(--surf2);border:1px solid var(--bdr2);border-radius:7px;
+  padding:5px 10px;font-weight:600;font-size:13px;}
+.note-pill.hi{background:var(--gold-d);border-color:var(--gold);color:var(--gold);}
+
+/* guide content prose */
+.prose{padding:20px;}
+.prose h2{font-family:"Bebas Neue",sans-serif;font-size:20px;letter-spacing:0.5px;color:var(--gold);margin:22px 0 8px;}
+.prose h2:first-child{margin-top:0;}
+.prose p{font-size:14px;color:#ccc;line-height:1.7;margin-bottom:10px;}
+.prose strong{color:var(--text);font-weight:600;}
+.prose table{width:100%;border-collapse:collapse;margin:10px 0;font-size:13px;}
+.prose th{text-align:left;padding:7px 8px;font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--bdr);}
+.prose td{padding:8px;border-bottom:1px solid var(--bdr);}
+.prose tr:last-child td{border-bottom:none;}
+.maj{color:var(--green);} .min{color:var(--blue);} .dim{color:var(--red);}
+
+/* XP toast */
+.xp-toast{position:fixed;top:70px;right:16px;background:var(--gold);color:var(--bg);
+  font-family:"Bebas Neue",sans-serif;font-size:20px;padding:7px 14px;border-radius:8px;
+  opacity:0;transform:translateY(-8px);transition:all 0.25s;pointer-events:none;z-index:999;}
+.xp-toast.show{opacity:1;transform:translateY(0);}
+
+/* overlay */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,0.88);display:none;
+  align-items:center;justify-content:center;z-index:500;padding:24px;}
+.overlay.show{display:flex;}
+.ov-card{background:var(--surf);border:2px solid var(--gold);border-radius:16px;
+  padding:30px 22px;text-align:center;max-width:290px;width:100%;
+  box-shadow:0 0 80px rgba(240,192,64,0.15);}
+.ov-icon{font-size:52px;margin-bottom:12px;}
+.ov-title{font-family:"Bebas Neue",sans-serif;font-size:26px;color:var(--gold);letter-spacing:1px;margin-bottom:8px;}
+.ov-desc{font-size:13px;color:var(--muted);margin-bottom:22px;line-height:1.5;}
+
+@keyframes shake{0%,100%{transform:translateX(0);}20%{transform:translateX(-6px);}40%{transform:translateX(6px);}60%{transform:translateX(-4px);}80%{transform:translateX(4px);}}
+.shake{animation:shake 0.35s ease;}
+
+/* ── HOME / DRILL ── */
+#sc-drill{background:var(--bg);}
+.drill-logo{font-family:"Bebas Neue",sans-serif;font-size:36px;letter-spacing:2px;line-height:1;color:var(--gold);}
+.drill-logo span{color:var(--text);}
+.drill-sub{font-size:12px;color:var(--muted);margin-top:2px;}
+.xp-bar-row{display:flex;align-items:center;gap:10px;padding:0 20px 14px;flex-shrink:0;}
+.xp-bar-w{flex:1;height:5px;background:var(--bdr);border-radius:3px;overflow:hidden;}
+.xp-bar-f{height:100%;background:linear-gradient(90deg,var(--gold),var(--blue));border-radius:3px;transition:width 0.5s;}
+.xp-lbl{font-size:12px;color:var(--gold);font-weight:600;white-space:nowrap;}
+.stats-strip{display:flex;gap:8px;padding:0 20px 18px;flex-shrink:0;overflow-x:auto;}
+.sc{background:var(--surf);border:1px solid var(--bdr);border-radius:50px;padding:5px 12px;
+  font-size:12px;white-space:nowrap;display:flex;align-items:center;gap:4px;flex-shrink:0;}
+.sc .sv{color:var(--gold);font-weight:600;}
+.mode-list{padding:0 20px 20px;display:flex;flex-direction:column;gap:9px;}
+.mc{background:var(--surf);border:1px solid var(--bdr);border-radius:var(--r);padding:16px;
+  cursor:pointer;position:relative;overflow:hidden;display:flex;align-items:center;gap:14px;
+  transition:transform 0.12s;}
+.mc:active{transform:scale(0.97);}
+.mc::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--c,var(--gold));}
+.mc-icon{font-size:24px;width:42px;height:42px;background:var(--surf2);border-radius:10px;
+  display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.mc-body{flex:1;min-width:0;}
+.mc-title{font-family:"Bebas Neue",sans-serif;font-size:17px;letter-spacing:0.5px;color:var(--c,var(--gold));}
+.mc-desc{font-size:12px;color:var(--muted);margin-top:2px;line-height:1.4;}
+.mc-prog{height:3px;background:var(--bdr);border-radius:2px;overflow:hidden;margin-top:8px;}
+.mc-prog-fill{height:100%;background:var(--c,var(--gold));border-radius:2px;transition:width 0.5s;}
+.mc-badge{font-size:10px;font-weight:700;letter-spacing:0.5px;background:var(--c,var(--gold));
+  color:var(--bg);padding:3px 8px;border-radius:50px;white-space:nowrap;flex-shrink:0;}
+
+/* ── QUIZ ── */
+#sc-quiz{background:var(--bg);}
+.qpbar{height:2px;background:var(--bdr);flex-shrink:0;}
+.qpfill{height:100%;background:linear-gradient(90deg,var(--gold),var(--blue));transition:width 0.4s;}
+.qscroll{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:18px 20px;}
+.qhud{display:flex;align-items:center;gap:10px;margin-bottom:14px;}
+.tw{flex:1;height:7px;background:var(--bdr);border-radius:4px;overflow:hidden;}
+.tf{height:100%;border-radius:4px;transition:width 0.25s linear,background 0.3s;}
+.tf.ok{background:var(--green);}.tf.warn{background:var(--gold);}.tf.danger{background:var(--red);}
+.tn{font-family:"Bebas Neue",sans-serif;font-size:22px;width:30px;text-align:right;line-height:1;transition:color 0.3s;}
+.tn.ok{color:var(--green);}.tn.warn{color:var(--gold);}.tn.danger{color:var(--red);}
+.spill{display:flex;align-items:center;gap:4px;background:var(--surf);border:1px solid var(--bdr);
+  border-radius:50px;padding:4px 10px;font-size:12px;font-weight:600;}
+.spill .sf{font-size:14px;} .spill .sn{color:var(--gold);}
+.qcard{background:var(--surf);border:1px solid var(--bdr);border-radius:var(--r);padding:18px;
+  margin-bottom:14px;position:relative;overflow:hidden;}
+.qcard::after{content:"";position:absolute;top:0;left:0;right:0;height:2px;
+  background:linear-gradient(90deg,var(--gold),var(--blue));}
+.qcat{font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:7px;}
+.qtext{font-size:16px;font-weight:500;line-height:1.4;}
+.qkey{font-family:"Bebas Neue",sans-serif;font-size:40px;color:var(--gold);letter-spacing:2px;line-height:1;display:block;margin-top:5px;}
+.qdots{display:flex;gap:5px;margin-top:10px;}
+.qdot{width:8px;height:8px;border-radius:50%;background:var(--bdr);transition:background 0.2s;}
+.qdot.used{background:var(--red);}
+.hint-box{background:var(--surf2);border:1px solid var(--bdr2);border-radius:10px;padding:12px 14px;
+  margin-bottom:12px;font-size:13px;color:var(--muted);line-height:1.6;display:none;}
+.hint-box.show{display:block;}
+.hint-box strong{color:var(--gold);font-weight:600;}
+.mhint{font-size:12px;color:var(--muted);text-align:center;margin-bottom:8px;display:none;}
+.agrid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;}
+.agrid.single{grid-template-columns:1fr;}
+.ab{background:var(--surf);border:1.5px solid var(--bdr);border-radius:10px;padding:13px 10px;
+  color:var(--text);font-family:"Outfit",sans-serif;font-size:14px;font-weight:500;
+  cursor:pointer;text-align:center;line-height:1.3;min-height:50px;
+  display:flex;align-items:center;justify-content:center;transition:border-color 0.15s,background 0.15s,transform 0.1s;}
+.ab:active{transform:scale(0.96);}
+.ab.msel{border-color:var(--gold);background:var(--gold-d);}
+.ab.correct{border-color:var(--green);background:var(--green-d);color:var(--green);}
+.ab.wflash{border-color:var(--red);background:var(--red-d);color:var(--red);}
+.ab:disabled{cursor:default;}
+.sub-btn{background:var(--surf2);color:var(--text);border:1.5px solid var(--gold);border-radius:10px;
+  padding:13px;font-family:"Outfit",sans-serif;font-size:14px;font-weight:600;cursor:pointer;width:100%;margin-bottom:9px;display:none;}
+.sub-btn.show{display:block;}
+.next-btn{background:var(--gold);color:var(--bg);border:none;border-radius:10px;padding:14px;
+  font-family:"Bebas Neue",sans-serif;font-size:18px;letter-spacing:1px;cursor:pointer;width:100%;display:none;}
+.next-btn.show{display:block;}
+
+/* ── RESULTS ── */
+#sc-results{background:var(--bg);align-items:center;justify-content:center;text-align:center;padding:28px 22px;}
+.res-grade{font-family:"Bebas Neue",sans-serif;font-size:90px;line-height:1;color:var(--gold);text-shadow:0 0 60px rgba(240,192,64,0.3);}
+.res-sub{font-size:14px;color:var(--muted);margin-bottom:24px;}
+.res-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;width:100%;max-width:320px;margin-bottom:24px;}
+.rs{background:var(--surf);border:1px solid var(--bdr);border-radius:var(--r);padding:14px;}
+.rs .rv{font-family:"Bebas Neue",sans-serif;font-size:30px;color:var(--gold);}
+.rs .rl{font-size:11px;color:var(--muted);margin-top:2px;}
+.res-btns{display:flex;flex-direction:column;gap:8px;width:100%;max-width:320px;}
+
+/* ── LEARN ── */
+#sc-learn{background:var(--bg);}
+.learn-tabs{display:flex;gap:0;padding:0 20px 16px;flex-shrink:0;}
+.ltab{flex:1;padding:9px 6px;text-align:center;font-size:12px;font-weight:600;letter-spacing:0.5px;
+  background:var(--surf);border:1px solid var(--bdr);cursor:pointer;color:var(--muted);transition:all 0.15s;}
+.ltab:first-child{border-radius:8px 0 0 8px;}
+.ltab:last-child{border-radius:0 8px 8px 0;}
+.ltab.active{background:var(--gold);color:var(--bg);border-color:var(--gold);}
+.guide-card{background:var(--surf);border:1px solid var(--bdr);border-radius:var(--r);padding:15px;
+  cursor:pointer;display:flex;align-items:center;gap:13px;transition:border-color 0.15s;margin-bottom:9px;}
+.guide-card:active{transform:scale(0.98);}
+.gc-icon{width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:19px;flex-shrink:0;}
+.gc-body{flex:1;}
+.gc-title{font-weight:600;font-size:14px;}
+.gc-sub{font-size:12px;color:var(--muted);margin-top:2px;}
+.gc-arr{color:var(--muted2);font-size:18px;}
+.learn-section{font-family:"Bebas Neue",sans-serif;font-size:13px;letter-spacing:1.5px;color:var(--muted);
+  padding:4px 0 8px;margin-top:8px;}
+
+/* guide detail */
+#sc-guide-detail{background:var(--bg);}
+.guide-quiz-btn{background:var(--gold-d);border:1px solid var(--gold);border-radius:10px;
+  padding:14px 16px;display:flex;align-items:center;gap:12px;cursor:pointer;margin:0 20px 16px;}
+.gqb-icon{font-size:22px;}
+.gqb-body{flex:1;}
+.gqb-title{font-weight:600;font-size:14px;color:var(--gold);}
+.gqb-sub{font-size:12px;color:var(--muted);margin-top:2px;}
+
+/* ── SONGWRITER ── */
+#sc-song{background:var(--bg);}
+.key-grid{display:flex;flex-wrap:wrap;gap:7px;padding:0 20px 16px;}
+.kbtn{background:var(--surf);border:1.5px solid var(--bdr);border-radius:10px;padding:10px 8px;
+  min-width:52px;text-align:center;cursor:pointer;transition:all 0.15s;}
+.kbtn:active{transform:scale(0.95);}
+.kbtn.active{background:var(--gold);border-color:var(--gold);color:var(--bg);}
+.kbtn .kn{font-family:"Bebas Neue",sans-serif;font-size:18px;letter-spacing:0.5px;}
+.kbtn .kt{font-size:10px;color:var(--muted);margin-top:1px;}
+.kbtn.active .kt{color:rgba(0,0,0,0.6);}
+.song-content{padding:0 20px 20px;}
+.song-section{margin-bottom:20px;}
+.song-section-title{font-family:"Bebas Neue",sans-serif;font-size:16px;letter-spacing:1px;
+  color:var(--gold);margin-bottom:10px;display:flex;align-items:center;gap:8px;}
+.chord-chip{display:inline-flex;flex-direction:column;align-items:center;
+  background:var(--surf);border:1px solid var(--bdr);border-radius:8px;padding:8px 12px;margin:4px;
+  min-width:52px;cursor:pointer;transition:border-color 0.15s;}
+.chord-chip:active{transform:scale(0.95);}
+.chord-chip .cc-deg{font-size:10px;color:var(--muted);margin-bottom:2px;}
+.chord-chip .cc-name{font-family:"Bebas Neue",sans-serif;font-size:18px;letter-spacing:0.5px;}
+.chord-chip.maj-c .cc-name{color:var(--green);}
+.chord-chip.min-c .cc-name{color:var(--blue);}
+.chord-chip.dim-c .cc-name{color:var(--red);}
+.prog-card{background:var(--surf);border:1px solid var(--bdr);border-radius:var(--r2);padding:14px;margin-bottom:8px;cursor:pointer;transition:border-color 0.15s;}
+.prog-card:active{transform:scale(0.98);}
+.prog-card .pc-name{font-weight:600;font-size:14px;margin-bottom:4px;}
+.prog-card .pc-chords{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px;}
+.prog-chip{background:var(--surf2);border:1px solid var(--bdr2);border-radius:6px;padding:4px 10px;
+  font-family:"Bebas Neue",sans-serif;font-size:15px;letter-spacing:0.5px;}
+.prog-card .pc-desc{font-size:12px;color:var(--muted);line-height:1.4;}
+.prog-card .pc-genre{font-size:11px;color:var(--gold);margin-top:4px;font-weight:500;}
+.song-example{background:var(--gold-d);border:1px solid rgba(240,192,64,0.3);border-radius:10px;padding:12px 14px;margin-bottom:10px;}
+.se-label{font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--gold);margin-bottom:4px;}
+.se-text{font-size:13px;color:#ddd;line-height:1.5;}
+.mood-box{background:var(--surf2);border:1px solid var(--bdr2);border-radius:10px;padding:12px 14px;margin-bottom:12px;}
+.mood-label{font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:4px;}
+.mood-text{font-size:14px;color:var(--text);line-height:1.5;}
+.scale-pill{background:var(--surf);border:1px solid var(--bdr);border-radius:8px;padding:10px 12px;margin-bottom:7px;}
+.sp-name{font-weight:600;font-size:13px;color:var(--blue);}
+.sp-use{font-size:11px;background:var(--blue-d);border-radius:4px;padding:2px 6px;margin-left:6px;color:var(--blue);}
+.sp-desc{font-size:12px;color:var(--muted);margin-top:4px;line-height:1.4;}
+
+/* ── REFERENCE ── */
+#sc-ref{background:var(--bg);}
+.ref-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:0 20px 20px;}
+.ref-card{background:var(--surf);border:1px solid var(--bdr);border-radius:var(--r);padding:18px;
+  cursor:pointer;position:relative;overflow:hidden;transition:transform 0.12s;}
+.ref-card:active{transform:scale(0.96);}
+.ref-card::before{content:"";position:absolute;top:0;left:0;right:0;height:2px;background:var(--c,var(--gold));}
+.ref-card .rc-icon{font-size:28px;margin-bottom:10px;}
+.ref-card .rc-title{font-family:"Bebas Neue",sans-serif;font-size:16px;letter-spacing:0.5px;color:var(--c,var(--gold));}
+.ref-card .rc-desc{font-size:11px;color:var(--muted);margin-top:3px;line-height:1.4;}
+
+/* fretboard in reference */
+#sc-fretboard,#sc-bass-fret{background:var(--bg);}
+.fb-controls{display:flex;flex-wrap:wrap;gap:7px;padding:14px 20px;flex-shrink:0;border-bottom:1px solid var(--bdr);}
+.fbtn{background:var(--surf);border:1px solid var(--bdr);border-radius:7px;padding:7px 12px;
+  font-size:12px;font-weight:600;cursor:pointer;color:var(--text);transition:all 0.15s;}
+.fbtn.active{background:var(--gold);color:var(--bg);border-color:var(--gold);}
+.fb-scroll{flex:1;overflow:auto;-webkit-overflow-scrolling:touch;padding:16px 20px;}
+.fb-wrap{overflow-x:auto;padding-bottom:8px;margin-bottom:16px;}
+.fb{background:linear-gradient(90deg,#1a1208 0%,#261a0a 50%,#1a1208 100%);
+  border-radius:8px;padding:14px 0;min-width:800px;border:2px solid #3d2d12;}
+.fb-nums{display:flex;align-items:center;padding:0 32px;margin-bottom:6px;}
+.fb-nsp{width:32px;flex-shrink:0;}
+.fb-nnut{width:16px;flex-shrink:0;}
+.fb-ncells{flex:1;display:flex;}
+.fn{flex:1;text-align:center;font-size:11px;color:var(--muted);font-weight:600;}
+.fn.open{width:44px;flex:none;color:var(--gold);}
+.fb-strings{padding:0 32px;}
+.fb-str{display:flex;align-items:center;position:relative;margin:4px 0;}
+.fb-slbl{width:32px;text-align:center;font-family:"Bebas Neue",sans-serif;font-size:14px;color:var(--gold);flex-shrink:0;}
+.fb-nut{width:8px;background:#f5f0e0;height:36px;border-radius:3px;margin-right:8px;flex-shrink:0;}
+.fb-sline{flex:1;position:relative;display:flex;align-items:center;}
+.fb-wire{position:absolute;left:0;right:0;height:2px;background:linear-gradient(90deg,#999,#ddd,#bbb,#999);border-radius:1px;z-index:1;}
+.fb-cells{display:flex;flex:1;position:relative;z-index:2;}
+.fb-open{width:44px;flex-shrink:0;display:flex;align-items:center;justify-content:center;}
+.fb-cell{flex:1;display:flex;align-items:center;justify-content:center;position:relative;
+  border-left:3px solid #c0a060;height:36px;}
+.fb-cell:last-child{border-right:3px solid #c0a060;}
+.ndot{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+  font-size:10px;font-weight:700;cursor:pointer;transition:transform 0.15s,opacity 0.2s;
+  position:relative;z-index:3;border:2px solid transparent;letter-spacing:-0.02em;}
+.ndot:hover{transform:scale(1.2);}
+.ndot.nat{background:var(--gold);color:#000;}
+.ndot.shp{background:var(--red);color:#fff;}
+.ndot.root{background:#fff;color:#000;border-color:var(--gold);box-shadow:0 0 10px rgba(240,192,64,0.6);}
+.ndot.hidden{opacity:0;pointer-events:none;}
+.fb-markers{display:flex;padding:6px 32px 0;padding-left:calc(32px + 44px + 8px + 8px);}
+.fb-mc{flex:1;display:flex;justify-content:center;border-left:3px solid transparent;}
+.fb-dot{width:7px;height:7px;border-radius:50%;background:rgba(255,255,255,0.12);}
+.note-picker{display:flex;flex-wrap:wrap;gap:6px;padding:16px 20px 0;flex-shrink:0;}
+.npbtn{background:var(--surf);border:1px solid var(--bdr);border-radius:7px;padding:6px 12px;
+  font-size:13px;font-weight:600;cursor:pointer;color:var(--text);transition:all 0.15s;}
+.npbtn.active{background:var(--gold);color:var(--bg);border-color:var(--gold);}
+
+/* chord reference */
+#sc-chord-ref{background:var(--bg);}
+.chord-filter{display:flex;gap:7px;padding:14px 20px;flex-shrink:0;overflow-x:auto;}
+.cf{background:var(--surf);border:1px solid var(--bdr);border-radius:7px;padding:7px 12px;
+  font-size:12px;font-weight:600;cursor:pointer;color:var(--muted);white-space:nowrap;flex-shrink:0;transition:all 0.15s;}
+.cf.active{background:var(--gold);color:var(--bg);border-color:var(--gold);}
+.chords-wrap{padding:0 20px;}
+.chord-section-title{font-family:"Bebas Neue",sans-serif;font-size:15px;letter-spacing:1px;color:var(--muted);
+  padding:12px 0 8px;border-bottom:1px solid var(--bdr);margin-bottom:10px;}
+.chords-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:16px;}
+.chord-card{background:var(--surf);border:1px solid var(--bdr);border-radius:10px;padding:10px 8px;
+  cursor:pointer;text-align:center;transition:border-color 0.15s;}
+.chord-card:active{transform:scale(0.96);}
+.chord-card-name{font-weight:700;font-size:13px;margin-bottom:6px;}
+
+/* triad table */
+#sc-triads{background:var(--bg);}
+.triad-filter{display:flex;gap:7px;padding:14px 20px;flex-shrink:0;overflow-x:auto;}
+.triad-legend{display:flex;gap:8px;flex-wrap:wrap;padding:0 20px 14px;flex-shrink:0;}
+.tl-pill{display:inline-flex;align-items:center;gap:6px;background:var(--surf2);border:1px solid var(--bdr2);
+  border-radius:50px;padding:5px 11px;font-size:11px;color:var(--muted);}
+.tl-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;}
+.triads-wrap{padding:0 20px;}
+.triad-section-title{font-family:"Bebas Neue",sans-serif;font-size:15px;letter-spacing:1px;color:var(--muted);
+  padding:12px 0 8px;border-bottom:1px solid var(--bdr);margin-bottom:8px;}
+.triad-row{display:flex;align-items:center;gap:10px;background:var(--surf);border:1px solid var(--bdr);
+  border-radius:10px;padding:10px 12px;margin-bottom:7px;cursor:pointer;transition:transform 0.12s;}
+.triad-row:active{transform:scale(0.98);}
+.tr-name{width:64px;flex-shrink:0;}
+.tr-name .trn-main{font-family:"Bebas Neue",sans-serif;font-size:16px;letter-spacing:0.5px;}
+.tr-name .trn-sym{font-size:10px;color:var(--muted);}
+.tr-notes{flex:1;display:flex;gap:6px;}
+.tr-note{flex:1;text-align:center;border-radius:7px;padding:6px 4px;font-weight:700;font-size:13px;
+  border:1px solid var(--bdr2);position:relative;}
+.tr-note .trl{display:block;font-size:8px;letter-spacing:0.5px;text-transform:uppercase;
+  font-weight:600;margin-top:1px;opacity:0.75;}
+.tr-note.root{background:var(--gold-d);border-color:var(--gold);color:var(--gold);}
+.tr-note.third-maj{background:var(--teal-d);border-color:var(--teal);color:var(--teal);}
+.tr-note.third-min{background:var(--green-d);border-color:var(--green);color:var(--green);}
+.tr-note.fifth-p{background:var(--orange-d);border-color:var(--orange);color:var(--orange);}
+.tr-note.fifth-dim{background:var(--red-d);border-color:var(--red);color:var(--red);}
+
+/* circle of fifths */
+#sc-cof{background:var(--bg);}
+.cof-wrap{padding:10px 20px 20px;display:flex;flex-direction:column;align-items:center;}
+.cof-svg-holder{width:100%;max-width:340px;margin:0 auto;}
+.cof-seg{cursor:pointer;}
+.cof-seg-bg{transition:fill 0.15s;}
+.cof-seg:active .cof-seg-bg{opacity:0.8;}
+.cof-info{width:100%;margin-top:18px;}
+.cof-info-card{background:var(--surf);border:1px solid var(--bdr);border-radius:var(--r);padding:16px;}
+.cof-info-name{font-family:"Bebas Neue",sans-serif;font-size:26px;letter-spacing:1px;color:var(--gold);}
+.cof-info-sig{font-size:13px;color:var(--muted);margin-top:2px;}
+.cof-info-notes{display:flex;gap:5px;flex-wrap:wrap;margin-top:12px;}
+.cof-note-pill{background:var(--surf2);border:1px solid var(--bdr2);border-radius:7px;
+  padding:5px 9px;font-weight:600;font-size:12px;}
+.cof-note-pill.acc{background:var(--gold-d);border-color:var(--gold);color:var(--gold);}
+.cof-info-rel{font-size:12px;color:var(--muted);margin-top:12px;}
+.cof-info-rel span{color:var(--blue);font-weight:600;}
+.cof-go{margin-top:14px;}
+.cof-hint{font-size:12px;color:var(--muted);text-align:center;margin-top:14px;line-height:1.6;}
+
+/* chord modal */
+.chord-modal-bg{position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:300;display:none;
+  align-items:flex-end;justify-content:center;padding:0;}
+.chord-modal-bg.show{display:flex;}
+.chord-modal{background:var(--surf);border-radius:20px 20px 0 0;padding:24px 20px 40px;
+  width:100%;max-height:85vh;overflow-y:auto;}
+.cm-handle{width:40px;height:4px;background:var(--bdr2);border-radius:2px;margin:0 auto 20px;}
+.cm-name{font-family:"Bebas Neue",sans-serif;font-size:28px;letter-spacing:1px;margin-bottom:4px;}
+.cm-desc{font-size:13px;color:var(--muted);line-height:1.5;margin-bottom:12px;}
+.cm-tip{background:var(--gold-d);border-left:3px solid var(--gold);border-radius:0 8px 8px 0;
+  padding:10px 12px;font-size:13px;color:#ddd;line-height:1.5;margin-bottom:16px;}
+.cm-tip strong{color:var(--gold);}
+.variations-grid{display:flex;gap:12px;flex-wrap:wrap;justify-content:center;}
+.var-card{text-align:center;}
+.var-label{font-size:12px;color:var(--muted);margin-bottom:4px;}
+
+/* practice guides */
+.practice-block{background:var(--surf);border:1px solid var(--bdr);border-radius:var(--r);
+  padding:16px;margin-bottom:10px;}
+.pb-header{display:flex;align-items:center;gap:10px;margin-bottom:10px;}
+.pb-icon{font-size:22px;}
+.pb-title{font-family:"Bebas Neue",sans-serif;font-size:17px;letter-spacing:0.5px;}
+.pb-time{font-size:11px;color:var(--gold);background:var(--gold-d);border-radius:4px;padding:2px 8px;}
+.pb-item{font-size:13px;color:#ccc;line-height:1.6;padding:5px 0;border-bottom:1px solid var(--bdr);}
+.pb-item:last-child{border-bottom:none;}
+.pb-item::before{content:"→ ";color:var(--gold);}
+/* scale modal */
+.scale-modal-bg{position:fixed;inset:0;background:rgba(0,0,0,0.88);z-index:300;display:none;align-items:flex-end;justify-content:center;}
+.scale-modal-bg.show{display:flex;}
+.scale-modal{background:var(--surf);border-radius:20px 20px 0 0;padding:22px 20px 44px;width:100%;max-height:90vh;overflow-y:auto;}
+.sm-handle{width:40px;height:4px;background:var(--bdr2);border-radius:2px;margin:0 auto 18px;}
+.sm-name{font-family:"Bebas Neue",sans-serif;font-size:26px;letter-spacing:1px;margin-bottom:3px;}
+.sm-use{display:inline-block;background:var(--blue-d);border:1px solid var(--blue);border-radius:5px;padding:2px 8px;font-size:11px;color:var(--blue);font-weight:600;margin-bottom:10px;}
+.sm-desc{font-size:13px;color:var(--muted);line-height:1.6;margin-bottom:14px;}
+.sm-tip{background:var(--gold-d);border-left:3px solid var(--gold);border-radius:0 8px 8px 0;padding:10px 12px;font-size:13px;color:#ddd;line-height:1.5;margin-bottom:18px;}
+.sm-tip strong{color:var(--gold);}
+.sm-pos-nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;}
+.sm-pos-label{font-family:"Bebas Neue",sans-serif;font-size:16px;letter-spacing:0.5px;color:var(--gold);text-align:center;flex:1;}
+.sm-pos-sub{font-size:11px;color:var(--muted);text-align:center;margin-bottom:10px;}
+.sm-nav-btn{background:var(--surf2);border:1px solid var(--bdr2);border-radius:8px;padding:8px 16px;font-size:18px;cursor:pointer;color:var(--text);}
+.sm-nav-btn:disabled{opacity:0.3;cursor:default;}
+.sm-diagram{display:flex;justify-content:center;margin-bottom:6px;}
+.sm-dots-row{display:flex;justify-content:center;gap:8px;margin-bottom:16px;}
+.sm-dot-nav{width:8px;height:8px;border-radius:50%;background:var(--bdr2);cursor:pointer;transition:background 0.15s;}
+.sm-dot-nav.active{background:var(--gold);}
+</style>
+.bn-root-grid{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:18px;}
+.bn-root-btn{background:var(--surf);border:1.5px solid var(--bdr);border-radius:9px;
+  padding:9px 12px;font-family:"Bebas Neue",sans-serif;font-size:17px;letter-spacing:0.5px;
+  cursor:pointer;color:var(--text);min-width:46px;text-align:center;transition:all 0.15s;}
+.bn-root-btn:active{transform:scale(0.94);}
+.bn-root-btn.active{background:var(--gold);border-color:var(--gold);color:var(--bg);}
+.bn-quality-row{display:flex;gap:8px;margin-bottom:18px;}
+.bn-q{flex:1;padding:10px;text-align:center;border-radius:9px;border:1.5px solid var(--bdr);
+  background:var(--surf);cursor:pointer;font-size:13px;font-weight:600;color:var(--muted);transition:all 0.15s;}
+.bn-q.active{background:var(--gold);border-color:var(--gold);color:var(--bg);}
+.bn-result{background:var(--surf2);border:1px solid var(--bdr2);border-radius:var(--r);
+  padding:16px;margin-bottom:12px;}
+.bn-result-title{font-family:"Bebas Neue",sans-serif;font-size:18px;letter-spacing:0.5px;
+  color:var(--gold);margin-bottom:4px;}
+.bn-result-sub{font-size:12px;color:var(--muted);margin-bottom:14px;line-height:1.5;}
+.bn-diagrams{display:flex;gap:16px;flex-wrap:wrap;justify-content:center;}
+.bn-diag{text-align:center;}
+.bn-diag-label{font-size:12px;color:var(--muted);margin-bottom:4px;}
+.bn-fret-tag{display:inline-block;background:var(--gold-d);border:1px solid rgba(240,192,64,0.4);
+  border-radius:5px;padding:2px 8px;font-size:11px;color:var(--gold);font-weight:600;margin-top:4px;}
+.bn-tip{background:var(--gold-d);border-left:3px solid var(--gold);border-radius:0 8px 8px 0;
+  padding:10px 12px;font-size:13px;color:#ddd;line-height:1.5;margin-top:10px;}
+.bn-tip strong{color:var(--gold);}
+.bn-placeholder{text-align:center;padding:40px 20px;color:var(--muted);font-size:14px;line-height:1.6;}
+</style>
+</head>
+<body>
+
+<div class="xp-toast" id="xpToast"></div>
+<div class="overlay" id="overlay">
+  <div class="ov-card">
+    <div class="ov-icon" id="ovIcon">🎸</div>
+    <div class="ov-title" id="ovTitle">LEVEL UP!</div>
+    <div class="ov-desc" id="ovDesc">Keep going!</div>
+    <button class="btn-gold" onclick="closeOverlay()">NICE ONE</button>
+  </div>
+</div>
+
+<!-- chord modal -->
+<div class="chord-modal-bg" id="chordModal" onclick="closeChordModal(event)">
+  <div class="chord-modal" id="chordModalContent">
+    <div class="cm-handle"></div>
+  </div>
+</div>
+
+<!-- scale modal -->
+<div class="scale-modal-bg" id="scaleModal" onclick="closeScaleModal(event)">
+  <div class="scale-modal" id="scaleModalContent">
+    <div class="sm-handle"></div>
+  </div>
+</div>
+
+<!-- ══ DRILL SCREEN ══ -->
+<div id="sc-drill" class="screen active">
+  <div class="phead" style="padding-bottom:10px;">
+    <div class="drill-logo">Fret<span>brain</span></div>
+    <div class="drill-sub">Learn it. Don't just look it up.</div>
+  </div>
+  <div class="xp-bar-row">
+    <div class="xp-bar-w"><div class="xp-bar-f" id="xpBarF" style="width:0%"></div></div>
+    <div class="xp-lbl" id="xpBarL">0 XP</div>
+  </div>
+  <div class="stats-strip">
+    <div class="sc">🔥 <span class="sv" id="hStreak">0</span> streak</div>
+    <div class="sc">⚡ <span class="sv" id="hXP">0</span> XP</div>
+    <div class="sc">✓ <span class="sv" id="hCorrect">0</span> correct</div>
+    <div class="sc">📚 <span class="sv" id="hSessions">0</span> sessions</div>
+  </div>
+  <div class="slabel">CHOOSE A DRILL</div>
+  <div class="scroll">
+    <div class="mode-list">
+      <div class="mc" style="--c:#f0c040" onclick="startMode('chords_in_key')">
+        <div class="mc-icon">🎸</div>
+        <div class="mc-body">
+          <div class="mc-title">Chords In A Key</div>
+          <div class="mc-desc">Select all chords that belong in a given key</div>
+          <div class="mc-prog"><div class="mc-prog-fill" id="mp_chords_in_key" style="width:0%"></div></div>
+        </div><div class="mc-badge">CORE</div>
+      </div>
+      <div class="mc" style="--c:#4ab0f0" onclick="startMode('notes_in_key')">
+        <div class="mc-icon">🎵</div>
+        <div class="mc-body">
+          <div class="mc-title">Notes In A Key</div>
+          <div class="mc-desc">Which notes belong in this scale?</div>
+          <div class="mc-prog"><div class="mc-prog-fill" id="mp_notes_in_key" style="width:0%"></div></div>
+        </div><div class="mc-badge">SCALES</div>
+      </div>
+      <div class="mc" style="--c:#50e090" onclick="startMode('fill_gap')">
+        <div class="mc-icon">🧩</div>
+        <div class="mc-body">
+          <div class="mc-title">Fill The Gap</div>
+          <div class="mc-desc">Some chords shown — work out the missing one</div>
+          <div class="mc-prog"><div class="mc-prog-fill" id="mp_fill_gap" style="width:0%"></div></div>
+        </div><div class="mc-badge">REASONING</div>
+      </div>
+      <div class="mc" style="--c:#c060f0" onclick="startMode('chord_quality')">
+        <div class="mc-icon">🎼</div>
+        <div class="mc-body">
+          <div class="mc-title">Chord Quality</div>
+          <div class="mc-desc">Major, minor, or diminished? Identify chord types</div>
+          <div class="mc-prog"><div class="mc-prog-fill" id="mp_chord_quality" style="width:0%"></div></div>
+        </div><div class="mc-badge">THEORY</div>
+      </div>
+      <div class="mc" style="--c:#f08040" onclick="startMode('scale_degrees')">
+        <div class="mc-icon">📐</div>
+        <div class="mc-body">
+          <div class="mc-title">Scale Degrees</div>
+          <div class="mc-desc">I ii iii IV V vi vii° — name the degree</div>
+          <div class="mc-prog"><div class="mc-prog-fill" id="mp_scale_degrees" style="width:0%"></div></div>
+        </div><div class="mc-badge">ADVANCED</div>
+      </div>
+      <div class="mc" style="--c:#f05050" onclick="startMode('relative_minor')">
+        <div class="mc-icon">🔄</div>
+        <div class="mc-body">
+          <div class="mc-title">Relative Keys</div>
+          <div class="mc-desc">Find the relative minor or major instantly</div>
+          <div class="mc-prog"><div class="mc-prog-fill" id="mp_relative_minor" style="width:0%"></div></div>
+        </div><div class="mc-badge">QUICK FIRE</div>
+      </div>
+    </div>
+  </div>
+  <nav class="nav">
+    <button class="nb active" onclick="showTab('drill')"><span class="ni">🎮</span>DRILL</button>
+    <button class="nb" onclick="showTab('learn')"><span class="ni">📖</span>LEARN</button>
+    <button class="nb" onclick="showTab('song')"><span class="ni">🎸</span>WRITE</button>
+    <button class="nb" onclick="showTab('ref')"><span class="ni">🔍</span>REF</button>
+  </nav>
+</div>
+
+<!-- ══ QUIZ SCREEN ══ -->
+<div id="sc-quiz" class="screen">
+  <div class="topbar">
+    <div class="back" onclick="exitQuiz()">←</div>
+    <div class="topbar-title" id="quizModeName">CHORDS IN A KEY</div>
+    <div style="font-size:12px;color:var(--muted)" id="quizQCount">1 / 10</div>
+  </div>
+  <div class="qpbar"><div class="qpfill" id="qpFill" style="width:0%"></div></div>
+  <div class="qscroll">
+    <div class="qhud">
+      <div class="tw"><div class="tf ok" id="timerFill"></div></div>
+      <div class="tn ok" id="timerNum">15</div>
+      <div style="width:8px"></div>
+      <div class="spill"><span class="sf">🔥</span><span class="sn" id="quizStreak">0</span></div>
+    </div>
+    <div class="qcard" id="qCard">
+      <div class="qcat" id="qCat">CHORDS IN KEY</div>
+      <div class="qtext" id="qText">Which chords are in the key of</div>
+      <span class="qkey" id="qKey">G Major</span>
+      <div class="qdots" id="qDots"></div>
+    </div>
+    <div class="hint-box" id="hintBox"></div>
+    <div class="mhint" id="mHint">Tap all that apply, then press Check</div>
+    <div class="agrid" id="answersGrid"></div>
+    <button class="sub-btn" id="subBtn" onclick="submitMulti()">CHECK ANSWERS</button>
+    <button class="next-btn" id="nextBtn" onclick="nextQ()">NEXT →</button>
+  </div>
+</div>
+
+<!-- ══ RESULTS ══ -->
+<div id="sc-results" class="screen">
+  <div class="res-grade" id="resGrade">A</div>
+  <div class="res-sub" id="resSub">8 / 10 correct</div>
+  <div class="res-grid">
+    <div class="rs"><div class="rv" id="resXP">+80</div><div class="rl">XP Earned</div></div>
+    <div class="rs"><div class="rv" id="resStreak">5</div><div class="rl">Best Streak</div></div>
+    <div class="rs"><div class="rv" id="resTime">8s</div><div class="rl">Avg Speed</div></div>
+    <div class="rs"><div class="rv" id="resAcc">80%</div><div class="rl">Accuracy</div></div>
+  </div>
+  <div class="res-btns">
+    <button class="btn-gold" onclick="playAgain()">PLAY AGAIN</button>
+    <button class="btn-ghost" onclick="goHome()">CHANGE MODE</button>
+  </div>
+</div>
+
+<!-- ══ LEARN SCREEN ══ -->
+<div id="sc-learn" class="screen">
+  <div class="phead"><h1>LEARN</h1><p>Read, understand, then drill it</p></div>
+  <div class="learn-tabs">
+    <div class="ltab active" onclick="learnTab('theory',this)">THEORY</div>
+    <div class="ltab" onclick="learnTab('practice',this)">PRACTICE</div>
+    <div class="ltab" onclick="learnTab('bass',this)">BASS</div>
+  </div>
+  <div class="scroll"><div id="learnContent" style="padding:0 20px 20px;"></div></div>
+  <nav class="nav">
+    <button class="nb" onclick="showTab('drill')"><span class="ni">🎮</span>DRILL</button>
+    <button class="nb active" onclick="showTab('learn')"><span class="ni">📖</span>LEARN</button>
+    <button class="nb" onclick="showTab('song')"><span class="ni">🎸</span>WRITE</button>
+    <button class="nb" onclick="showTab('ref')"><span class="ni">🔍</span>REF</button>
+  </nav>
+</div>
+
+<!-- ══ GUIDE DETAIL ══ -->
+<div id="sc-guide-detail" class="screen">
+  <div class="topbar">
+    <div class="back" onclick="closeGuide()">←</div>
+    <div class="topbar-title" id="gdTitle">GUIDE</div>
+  </div>
+  <div class="guide-quiz-btn" id="gdQuizBtn" onclick="startGuideQuiz()" style="display:none">
+    <div class="gqb-icon">🎮</div>
+    <div class="gqb-body">
+      <div class="gqb-title">Test yourself on this topic</div>
+      <div class="gqb-sub">Drill questions linked to this guide</div>
+    </div>
+    <div style="color:var(--gold);font-size:20px;">›</div>
+  </div>
+  <div class="scroll"><div class="prose" id="gdContent"></div></div>
+</div>
+
+<!-- ══ SONGWRITER ══ -->
+<div id="sc-song" class="screen">
+  <div class="phead"><h1>SONGWRITER</h1><p>Pick a key — see everything you need to write in it</p></div>
+  <div class="slabel" style="padding-bottom:8px;">SELECT A KEY</div>
+  <div class="key-grid" id="keyGrid"></div>
+  <div class="scroll"><div class="song-content" id="songContent"><p style="color:var(--muted);font-size:13px;padding:20px 0;">Select a key above to get started</p></div></div>
+  <nav class="nav">
+    <button class="nb" onclick="showTab('drill')"><span class="ni">🎮</span>DRILL</button>
+    <button class="nb" onclick="showTab('learn')"><span class="ni">📖</span>LEARN</button>
+    <button class="nb active" onclick="showTab('song')"><span class="ni">🎸</span>WRITE</button>
+    <button class="nb" onclick="showTab('ref')"><span class="ni">🔍</span>REF</button>
+  </nav>
+</div>
+
+<!-- ══ REFERENCE ══ -->
+<div id="sc-ref" class="screen">
+  <div class="phead"><h1>REFERENCE</h1><p>Quick lookup — fretboard, chords &amp; keys</p></div>
+  <div class="scroll">
+    <div class="ref-grid">
+      <div class="ref-card" style="--c:#f0c040" onclick="showScreen('sc-fretboard')">
+        <div class="rc-icon">🎸</div>
+        <div class="rc-title">Guitar Fretboard</div>
+        <div class="rc-desc">All notes in standard tuning, interactive</div>
+      </div>
+      <div class="ref-card" style="--c:#4ab0f0" onclick="showScreen('sc-bass-fret')">
+        <div class="rc-icon">🎵</div>
+        <div class="rc-title">Bass Fretboard</div>
+        <div class="rc-desc">4-string bass, standard tuning EADG</div>
+      </div>
+      <div class="ref-card" style="--c:#50e090" onclick="showScreen('sc-chord-ref')">
+        <div class="rc-icon">🎼</div>
+        <div class="rc-title">Chord Library</div>
+        <div class="rc-desc">Open, barre &amp; 7th chords with diagrams</div>
+      </div>
+      <div class="ref-card" style="--c:#c060f0" onclick="showTab('song')">
+        <div class="rc-icon">✍️</div>
+        <div class="rc-title">Key Cheat Sheet</div>
+        <div class="rc-desc">Chords &amp; progressions for every key</div>
+      </div>
+      <div class="ref-card" style="--c:#40d0c0" onclick="showScreen('sc-triads')">
+        <div class="rc-icon">🧩</div>
+        <div class="rc-title">Triad Table</div>
+        <div class="rc-desc">Root, 3rd &amp; 5th for every major, minor &amp; dim chord</div>
+      </div>
+      <div class="ref-card" style="--c:#f08040" onclick="showScreen('sc-cof')">
+        <div class="rc-icon">⭕</div>
+        <div class="rc-title">Circle of Fifths</div>
+        <div class="rc-desc">Sharps, flats &amp; relative minors at a glance</div>
+      </div>
+    </div>
+  </div>
+  <nav class="nav">
+    <button class="nb" onclick="showTab('drill')"><span class="ni">🎮</span>DRILL</button>
+    <button class="nb" onclick="showTab('learn')"><span class="ni">📖</span>LEARN</button>
+    <button class="nb" onclick="showTab('song')"><span class="ni">🎸</span>WRITE</button>
+    <button class="nb active" onclick="showTab('ref')"><span class="ni">🔍</span>REF</button>
+  </nav>
+</div>
+
+<!-- ══ GUITAR FRETBOARD ══ -->
+<div id="sc-fretboard" class="screen">
+  <div class="topbar">
+    <div class="back" onclick="showScreen('sc-ref')">←</div>
+    <div class="topbar-title">GUITAR FRETBOARD</div>
+  </div>
+  <div class="fb-controls">
+    <button class="fbtn active" onclick="fbView('all',this)">All Notes</button>
+    <button class="fbtn" onclick="fbView('naturals',this)">Naturals</button>
+    <button class="fbtn" onclick="fbView('sharps',this)">Sharps</button>
+    <button class="fbtn" id="fbNotationBtn" onclick="fbToggleNotation()">Show ♭</button>
+  </div>
+  <div class="note-picker" id="fbNotePicker"></div>
+  <div class="fb-scroll">
+    <div class="fb-wrap"><div class="fb" id="guitarFB"></div></div>
+    <div class="card2" style="margin-top:8px;font-size:13px;color:var(--muted);line-height:1.6;">
+      <strong style="color:var(--gold);">How to read this:</strong> Each row is a string (low E top, high e bottom). Fret numbers across the top. Tap any note to highlight all occurrences. Every note repeats at the 12th fret one octave higher.
+    </div>
+  </div>
+</div>
+
+<!-- ══ BASS FRETBOARD ══ -->
+<div id="sc-bass-fret" class="screen">
+  <div class="topbar">
+    <div class="back" onclick="showScreen('sc-ref')">←</div>
+    <div class="topbar-title">BASS FRETBOARD</div>
+  </div>
+  <div class="fb-controls">
+    <button class="fbtn active" onclick="bfView('all',this)">All Notes</button>
+    <button class="fbtn" onclick="bfView('naturals',this)">Naturals</button>
+    <button class="fbtn" id="bfNotationBtn" onclick="bfToggleNotation()">Show ♭</button>
+  </div>
+  <div class="note-picker" id="bfNotePicker"></div>
+  <div class="fb-scroll">
+    <div class="fb-wrap"><div class="fb" id="bassFB"></div></div>
+    <div class="card2" style="margin-top:8px;font-size:13px;color:var(--muted);line-height:1.6;">
+      <strong style="color:var(--gold);">Bass tip:</strong> The root note of any chord in your progression lives on this fretboard. Find the root, add the octave (2 strings up, 2 frets over) for a simple but effective bass line. Follow the kick drum rhythm to lock in the groove.
+    </div>
+  </div>
+</div>
+
+<!-- ══ CHORD REFERENCE ══ -->
+<div id="sc-chord-ref" class="screen">
+  <div class="topbar">
+    <div class="back" onclick="showScreen('sc-ref')">←</div>
+    <div class="topbar-title">CHORD LIBRARY</div>
+  </div>
+  <div class="chord-filter">
+    <button class="cf active" onclick="filterChords('all',this)">All</button>
+    <button class="cf" onclick="filterChords('major',this)">Major</button>
+    <button class="cf" onclick="filterChords('minor',this)">Minor</button>
+    <button class="cf" onclick="filterChords('7th',this)">7th</button>
+    <button class="cf" onclick="filterChords('barre',this)">Barre</button>
+    <button class="cf" onclick="filterChords('sus',this)">Sus/Add</button>
+    <button class="cf" onclick="filterChords('navigator',this)">🔍 Any Chord</button>
+  </div>
+  <div class="scroll"><div class="chords-wrap" id="chordsWrap"></div></div>
+</div>
+
+<!-- ══ TRIAD TABLE ══ -->
+<div id="sc-triads" class="screen">
+  <div class="topbar">
+    <div class="back" onclick="showScreen('sc-ref')">←</div>
+    <div class="topbar-title">TRIAD TABLE</div>
+  </div>
+  <div class="triad-filter">
+    <button class="cf tf active" onclick="filterTriads('all',this)">All</button>
+    <button class="cf tf" onclick="filterTriads('major',this)">Major</button>
+    <button class="cf tf" onclick="filterTriads('minor',this)">Minor</button>
+    <button class="cf tf" onclick="filterTriads('dim',this)">Diminished</button>
+  </div>
+  <div class="triad-legend">
+    <span class="tl-pill"><span class="tl-dot" style="background:var(--gold)"></span>Root</span>
+    <span class="tl-pill"><span class="tl-dot" style="background:var(--teal)"></span>Major 3rd</span>
+    <span class="tl-pill"><span class="tl-dot" style="background:var(--green)"></span>Minor 3rd</span>
+    <span class="tl-pill"><span class="tl-dot" style="background:var(--orange)"></span>Perfect 5th</span>
+    <span class="tl-pill"><span class="tl-dot" style="background:var(--red)"></span>Dim 5th</span>
+  </div>
+  <div class="scroll"><div class="triads-wrap" id="triadsWrap"></div></div>
+</div>
+
+<!-- ══ CIRCLE OF FIFTHS ══ -->
+<div id="sc-cof" class="screen">
+  <div class="topbar">
+    <div class="back" onclick="showScreen('sc-ref')">←</div>
+    <div class="topbar-title">CIRCLE OF FIFTHS</div>
+  </div>
+  <div class="scroll">
+    <div class="cof-wrap">
+      <div class="cof-svg-holder" id="cofSvgHolder"></div>
+      <div class="cof-info">
+        <div class="cof-info-card" id="cofInfoCard"></div>
+      </div>
+      <div class="cof-hint">Tap any segment to see its key signature. Outer ring = major keys, inner ring = relative minors. Moving clockwise adds a sharp; anticlockwise adds a flat.</div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ═══ MUSIC THEORY ENGINE ═══
+const NOTES=['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+const NOTE_FLAT={'C#':'Db','D#':'Eb','F#':'Gb','G#':'Ab','A#':'Bb'};
+const MAJ_INT=[0,2,4,5,7,9,11],MIN_INT=[0,2,3,5,7,8,10];
+const MAJ_Q=['Major','minor','minor','Major','Major','minor','diminished'];
+const MIN_Q=['minor','diminished','Major','minor','minor','Major','Major'];
+const MAJ_DEG=['I','ii','iii','IV','V','vi','vii°'];
+const MIN_DEG=['i','ii°','III','iv','v','VI','VII'];
+const ALL_KEYS=['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+
+function dn(n,flat){return flat&&NOTE_FLAT[n]?NOTE_FLAT[n]:n;}
+function scNotes(root,ints){const ri=NOTES.indexOf(root);return ints.map(i=>NOTES[(ri+i)%12]);}
+function chordsInKey(root,type){
+  const notes=scNotes(root,type==='major'?MAJ_INT:MIN_INT);
+  const qual=type==='major'?MAJ_Q:MIN_Q;
+  return notes.map((n,i)=>({root:n,quality:qual[i]}));
+}
+function relMin(r){return NOTES[(NOTES.indexOf(r)+9)%12];}
+function relMaj(r){return NOTES[(NOTES.indexOf(r)+3)%12];}
+
+// ═══ STATE ═══
+const S={
+  xp:0,streak:0,bestStreak:0,totalCorrect:0,sessions:0,
+  mode:null,questions:[],qIdx:0,attempts:0,maxAttempts:3,
+  answered:false,multiSel:[],timer:null,timeLeft:0,
+  sessionCorrect:0,sessionXP:0,sessionTimes:[],progress:{}
+};
+const SAVE_KEY='fretbrain_v3';
+
+function saveData(){
+  try{localStorage.setItem(SAVE_KEY,JSON.stringify({
+    xp:S.xp,streak:S.streak,bestStreak:S.bestStreak,
+    totalCorrect:S.totalCorrect,sessions:S.sessions,progress:S.progress
+  }));}catch(e){}
+}
+function loadData(){
+  try{
+    const d=JSON.parse(localStorage.getItem(SAVE_KEY)||'{}');
+    S.xp=d.xp||0;S.streak=d.streak||0;S.bestStreak=d.bestStreak||0;
+    S.totalCorrect=d.totalCorrect||0;S.sessions=d.sessions||0;S.progress=d.progress||{};
+    Object.keys(S.progress).forEach(k=>{
+      const el=document.getElementById('mp_'+k);
+      if(el)el.style.width=S.progress[k]+'%';
+    });
+  }catch(e){}
+}
+
+// ═══ HELPERS ═══
+function shuffle(a){const b=[...a];for(let i=b.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[b[i],b[j]]=[b[j],b[i]];}return b;}
+function pick(a,n){return shuffle(a).slice(0,n);}
+function rand(a){return a[Math.floor(Math.random()*a.length)];}
+
+// ═══ QUESTION GENERATORS ═══
+function genChordsInKey(){
+  const root=rand(ALL_KEYS),type=rand(['major','minor']);
+  const chords=chordsInKey(root,type);
+  const cRoots=chords.map(c=>c.root);
+  const wrong=ALL_KEYS.filter(n=>!cRoots.includes(n));
+  const pool=shuffle([...pick(cRoots,Math.min(5,cRoots.length)),...pick(wrong,3)]);
+  const cInPool=pool.filter(n=>cRoots.includes(n));
+  const kl=`${dn(root)} ${type==='major'?'Major':'Minor'}`;
+  return{type:'multi',cat:'CHORDS IN KEY',text:'Select ALL chords in the key of',key:kl,
+    options:pool,correct:cInPool,
+    hint:`In <strong>${kl}</strong>, the full chord set is: <strong>${chords.map(c=>c.root).join(' — ')}</strong>.<br>Pattern for any major key: Major · minor · minor · Major · Major · minor · dim.<br>Minor key: minor · dim · Major · minor · minor · Major · Major.`,
+    quizMode:'chords_in_key'};
+}
+function genNotesInKey(){
+  const root=rand(ALL_KEYS),type=rand(['major','minor']);
+  const notes=scNotes(root,type==='major'?MAJ_INT:MIN_INT);
+  const wrong=ALL_KEYS.filter(n=>!notes.includes(n));
+  const correct=rand(notes);
+  const options=shuffle([correct,...pick(wrong,3)]);
+  const kl=`${dn(root)} ${type==='major'?'Major':'Minor'}`;
+  return{type:'single',cat:'NOTES IN KEY',text:'Which note belongs in the',key:`${kl} scale?`,
+    options,correct,
+    hint:`<strong>${kl}</strong> scale: <strong>${notes.map(n=>dn(n)).join(' — ')}</strong>.<br>Major scale formula: T T S T T T S from the root.`,
+    quizMode:'notes_in_key'};
+}
+function genFillGap(){
+  const root=rand(ALL_KEYS),type=rand(['major','minor']);
+  const chords=chordsInKey(root,type);
+  const gapIdx=Math.floor(Math.random()*7);
+  const correct=chords[gapIdx].root;
+  const shown=chords.map((c,i)=>i===gapIdx?'___':c.root);
+  const wrong=ALL_KEYS.filter(n=>!chords.map(c=>c.root).includes(n));
+  const options=shuffle([correct,...pick(wrong,3)]);
+  const kl=`${dn(root)} ${type==='major'?'Major':'Minor'}`;
+  return{type:'single',cat:'FILL THE GAP',text:`Complete the ${kl} chord sequence:`,
+    key:shown.join('  '),options,correct,
+    hint:`<strong>${kl}</strong> full sequence: <strong>${chords.map(c=>c.root).join(' — ')}</strong>.<br>The missing chord at position ${gapIdx+1} is <strong>${correct}</strong>.`,
+    quizMode:'fill_gap'};
+}
+function genChordQuality(){
+  const root=rand(ALL_KEYS),type=rand(['major','minor']);
+  const chords=chordsInKey(root,type);
+  const idx=Math.floor(Math.random()*7);
+  const chord=chords[idx];
+  const degs=type==='major'?MAJ_DEG:MIN_DEG;
+  const options=shuffle(['Major','minor','diminished','augmented']);
+  const kl=`${dn(root)} ${type==='major'?'Major':'Minor'}`;
+  return{type:'single',cat:'CHORD QUALITY',
+    text:`In ${kl}, what quality is the ${degs[idx]} chord`,key:`(${dn(chord.root)})?`,
+    options,correct:chord.quality,
+    hint:`In any <strong>${type} key</strong>, degree ${idx+1} (${degs[idx]}) is always <strong>${chord.quality}</strong>.<br>Major key pattern: Maj · min · min · Maj · Maj · min · dim.<br>Minor key pattern: min · dim · Maj · min · min · Maj · Maj.`,
+    quizMode:'chord_quality'};
+}
+function genScaleDegrees(){
+  const root=rand(ALL_KEYS),type=rand(['major','minor']);
+  const chords=chordsInKey(root,type);
+  const idx=Math.floor(Math.random()*7);
+  const chord=chords[idx];
+  const degs=type==='major'?MAJ_DEG:MIN_DEG;
+  const wDegs=degs.filter((_,i)=>i!==idx);
+  const options=shuffle([degs[idx],...pick(wDegs,3)]);
+  const kl=`${dn(root)} ${type==='major'?'Major':'Minor'}`;
+  return{type:'single',cat:'SCALE DEGREE',text:`In ${kl}, what degree is`,key:`${dn(chord.root)}?`,
+    options,correct:degs[idx],
+    hint:`In <strong>${kl}</strong>, the degrees are: <strong>${chords.map((c,i)=>`${degs[i]}=${c.root}`).join(', ')}</strong>.<br>${dn(chord.root)} is position ${idx+1} — the <strong>${degs[idx]}</strong>.`,
+    quizMode:'scale_degrees'};
+}
+function genRelativeMinor(){
+  const askMin=rand([true,false]),root=rand(ALL_KEYS);
+  if(askMin){
+    const rel=relMin(root);
+    const opts=shuffle([rel,...pick(ALL_KEYS.filter(n=>n!==rel),3)]);
+    return{type:'single',cat:'RELATIVE KEYS',text:'What is the relative minor of',key:`${dn(root)} Major?`,
+      options:opts,correct:rel,
+      hint:`Relative minor = <strong>down 3 semitones</strong> from the major root.<br>From <strong>${dn(root)}</strong> → <strong>${dn(rel)}</strong> minor. Same notes, different home base.`,
+      quizMode:'relative_minor'};
+  }else{
+    const rel=relMaj(root);
+    const opts=shuffle([rel,...pick(ALL_KEYS.filter(n=>n!==rel),3)]);
+    return{type:'single',cat:'RELATIVE KEYS',text:'What is the relative major of',key:`${dn(root)} Minor?`,
+      options:opts,correct:rel,
+      hint:`Relative major = <strong>up 3 semitones</strong> from the minor root.<br>From <strong>${dn(root)}</strong> → <strong>${dn(rel)}</strong> major. Same notes, different tonal centre.`,
+      quizMode:'relative_minor'};
+  }
+}
+
+const GENERATORS={chords_in_key:genChordsInKey,notes_in_key:genNotesInKey,fill_gap:genFillGap,
+  chord_quality:genChordQuality,scale_degrees:genScaleDegrees,relative_minor:genRelativeMinor};
+const MODE_NAMES={chords_in_key:'CHORDS IN A KEY',notes_in_key:'NOTES IN A KEY',fill_gap:'FILL THE GAP',
+  chord_quality:'CHORD QUALITY',scale_degrees:'SCALE DEGREES',relative_minor:'RELATIVE KEYS'};
+
+// ═══ QUIZ ENGINE ═══
+function startMode(mode){
+  S.mode=mode;S.qIdx=0;S.sessionCorrect=0;S.sessionXP=0;S.sessionTimes=[];S.bestStreak=0;S.sessions++;
+  S.questions=[];
+  for(let i=0;i<10;i++)S.questions.push(GENERATORS[mode]());
+  document.getElementById('quizModeName').textContent=MODE_NAMES[mode];
+  showScreen('sc-quiz');renderQ();
+}
+function startGuideQuiz(){
+  const mode=currentGuideMode||'chords_in_key';
+  startMode(mode);
+}
+let currentGuideMode=null;
+
+function renderQ(){
+  const q=S.questions[S.qIdx];
+  S.answered=false;S.attempts=0;S.multiSel=[];
+  document.getElementById('qCat').textContent=q.cat;
+  document.getElementById('qText').textContent=q.text;
+  document.getElementById('qKey').textContent=q.key;
+  document.getElementById('quizQCount').textContent=`${S.qIdx+1} / ${S.questions.length}`;
+  document.getElementById('qpFill').style.width=`${(S.qIdx/S.questions.length)*100}%`;
+  document.getElementById('quizStreak').textContent=S.streak;
+  document.getElementById('hintBox').className='hint-box';
+  document.getElementById('nextBtn').className='next-btn';
+  document.getElementById('subBtn').className='sub-btn';
+  const dots=document.getElementById('qDots');dots.innerHTML='';
+  for(let i=0;i<S.maxAttempts;i++){const d=document.createElement('div');d.className='qdot';d.id='dot_'+i;dots.appendChild(d);}
+  const grid=document.getElementById('answersGrid');
+  const mh=document.getElementById('mHint');
+  if(q.type==='multi'){mh.style.display='block';document.getElementById('subBtn').className='sub-btn show';grid.className='agrid';}
+  else{mh.style.display='none';grid.className=q.options.length>3?'agrid':'agrid single';}
+  grid.innerHTML='';
+  q.options.forEach(opt=>{
+    const btn=document.createElement('button');btn.className='ab';btn.textContent=opt;
+    btn.onclick=()=>q.type==='multi'?toggleMulti(btn,opt):selectAnswer(btn,opt,q);
+    grid.appendChild(btn);
+  });
+  startTimer(q.type==='multi'?20:15);
+}
+function startTimer(secs){
+  clearInterval(S.timer);S.timeLeft=secs;
+  const fill=document.getElementById('timerFill'),num=document.getElementById('timerNum');
+  const upd=()=>{
+    const p=(S.timeLeft/secs)*100;fill.style.width=p+'%';num.textContent=S.timeLeft;
+    const c=p>60?'ok':p>30?'warn':'danger';
+    fill.className='tf '+c;num.className='tn '+c;
+  };
+  upd();
+  S.timer=setInterval(()=>{S.timeLeft--;upd();if(S.timeLeft<=0){clearInterval(S.timer);if(!S.answered)timeOut();}},1000);
+}
+function timeOut(){
+  S.answered=true;S.streak=0;
+  document.getElementById('quizStreak').textContent=0;
+  for(let i=0;i<S.maxAttempts;i++){const d=document.getElementById('dot_'+i);if(d)d.classList.add('used');}
+  showHint(S.questions[S.qIdx]);
+  document.getElementById('nextBtn').className='next-btn show';
+  document.getElementById('subBtn').className='sub-btn';
+  disableAll();
+}
+function toggleMulti(btn,opt){
+  if(S.answered)return;
+  const i=S.multiSel.indexOf(opt);
+  if(i>-1){S.multiSel.splice(i,1);btn.classList.remove('msel');}
+  else{S.multiSel.push(opt);btn.classList.add('msel');}
+}
+function submitMulti(){
+  if(S.answered)return;
+  const q=S.questions[S.qIdx];
+  const cSet=new Set(q.correct),sSet=new Set(S.multiSel);
+  const ok=q.correct.every(c=>sSet.has(c))&&S.multiSel.every(s=>cSet.has(s));
+  if(ok){
+    S.answered=true;clearInterval(S.timer);S.sessionTimes.push(20-S.timeLeft);
+    document.querySelectorAll('.ab').forEach(b=>{if(cSet.has(b.textContent))b.classList.add('correct');b.disabled=true;});
+    handleCorrect(q);
+  }else{
+    S.attempts++;const d=document.getElementById('dot_'+(S.attempts-1));if(d)d.classList.add('used');
+    document.querySelectorAll('.ab').forEach(b=>{
+      if(sSet.has(b.textContent)&&!cSet.has(b.textContent)){
+        b.classList.add('wflash');b.classList.remove('msel');
+        setTimeout(()=>b.classList.remove('wflash'),500);
+      }
+    });
+    S.multiSel=S.multiSel.filter(s=>cSet.has(s));
+    showHint(q);
+    if(S.attempts>=S.maxAttempts){
+      S.answered=true;clearInterval(S.timer);S.sessionTimes.push(20-S.timeLeft);
+      document.querySelectorAll('.ab').forEach(b=>{if(cSet.has(b.textContent))b.classList.add('correct');b.disabled=true;});
+      S.streak=0;document.getElementById('quizStreak').textContent=0;
+      document.getElementById('subBtn').className='sub-btn';
+      document.getElementById('nextBtn').className='next-btn show';
+    }
+  }
+}
+function selectAnswer(btn,opt,q){
+  if(S.answered)return;
+  if(opt===q.correct){
+    clearInterval(S.timer);S.sessionTimes.push(15-S.timeLeft);
+    S.answered=true;btn.classList.add('correct');disableAll();handleCorrect(q);
+  }else{
+    S.attempts++;const d=document.getElementById('dot_'+(S.attempts-1));if(d)d.classList.add('used');
+    btn.classList.add('wflash');
+    const card=document.getElementById('qCard');card.classList.add('shake');
+    setTimeout(()=>{btn.classList.remove('wflash');card.classList.remove('shake');},400);
+    btn.disabled=true;showHint(q);
+    if(S.attempts>=S.maxAttempts){
+      clearInterval(S.timer);S.sessionTimes.push(15-S.timeLeft);
+      S.answered=true;
+      document.querySelectorAll('.ab').forEach(b=>{if(b.textContent===q.correct)b.classList.add('correct');b.disabled=true;});
+      S.streak=0;document.getElementById('quizStreak').textContent=0;
+      document.getElementById('nextBtn').className='next-btn show';
+    }
+  }
+}
+function handleCorrect(q){
+  S.sessionCorrect++;S.totalCorrect++;S.streak++;
+  if(S.streak>S.bestStreak)S.bestStreak=S.streak;
+  const xp=Math.max(5,10+(S.timeLeft>10?5:0)+(S.streak>3?5:0)-(S.attempts*3));
+  S.xp+=xp;S.sessionXP+=xp;showXP('+'+xp+' XP');showHint(q);
+  document.getElementById('quizStreak').textContent=S.streak;
+  document.getElementById('nextBtn').className='next-btn show';
+  document.getElementById('subBtn').className='sub-btn';
+  updateHomeStats();saveData();checkMilestones();
+}
+function showHint(q){const b=document.getElementById('hintBox');b.innerHTML=q.hint;b.className='hint-box show';}
+function disableAll(){document.querySelectorAll('.ab').forEach(b=>b.disabled=true);}
+function nextQ(){S.qIdx++;if(S.qIdx>=S.questions.length){showResults();}else{renderQ();}}
+function showResults(){
+  clearInterval(S.timer);
+  const pct=Math.round((S.sessionCorrect/S.questions.length)*100);
+  const grade=pct>=90?'A+':pct>=80?'A':pct>=70?'B':pct>=60?'C':'D';
+  const avg=S.sessionTimes.length?Math.round(S.sessionTimes.reduce((a,b)=>a+b,0)/S.sessionTimes.length):0;
+  document.getElementById('resGrade').textContent=grade;
+  document.getElementById('resSub').textContent=`${S.sessionCorrect} / ${S.questions.length} correct`;
+  document.getElementById('resXP').textContent='+'+S.sessionXP;
+  document.getElementById('resStreak').textContent=S.bestStreak;
+  document.getElementById('resTime').textContent=avg+'s';
+  document.getElementById('resAcc').textContent=pct+'%';
+  const key=S.mode;
+  S.progress[key]=Math.min(100,(S.progress[key]||0)+pct*0.2);
+  document.getElementById('mp_'+key).style.width=S.progress[key]+'%';
+  saveData();showScreen('sc-results');
+}
+function playAgain(){startMode(S.mode);}
+function exitQuiz(){clearInterval(S.timer);goHome();}
+function checkMilestones(){
+  if(S.totalCorrect===10)showOverlay('🎸','FIRST 10!','You\'re building real knowledge. The fretboard remembers.');
+  else if(S.totalCorrect===50)showOverlay('⚡','THEORY BEAST','50 correct. You\'re actually learning this.');
+  else if(S.streak===10)showOverlay('🔥','10 STREAK!','Ten in a row. That\'s not luck — that\'s knowledge.');
+}
+
+// ═══ UI HELPERS ═══
+function showScreen(id){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));document.getElementById(id).classList.add('active');window.scrollTo(0,0);}
+function showTab(tab){
+  const map={drill:'sc-drill',learn:'sc-learn',song:'sc-song',ref:'sc-ref'};
+  showScreen(map[tab]);
+  document.querySelectorAll('.nav').forEach(nav=>{
+    nav.querySelectorAll('.nb').forEach((b,i)=>{
+      const tabs=['drill','learn','song','ref'];
+      b.classList.toggle('active',tabs[i]===tab);
+    });
+  });
+}
+function goHome(){updateHomeStats();showTab('drill');}
+function updateHomeStats(){
+  document.getElementById('hStreak').textContent=S.streak;
+  document.getElementById('hXP').textContent=S.xp;
+  document.getElementById('hCorrect').textContent=S.totalCorrect;
+  document.getElementById('hSessions').textContent=S.sessions;
+  document.getElementById('xpBarF').style.width=(S.xp%100)+'%';
+  document.getElementById('xpBarL').textContent=S.xp+' XP';
+}
+function showXP(txt){const t=document.getElementById('xpToast');t.textContent=txt;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),1200);}
+function showOverlay(icon,title,desc){
+  document.getElementById('ovIcon').textContent=icon;
+  document.getElementById('ovTitle').textContent=title;
+  document.getElementById('ovDesc').textContent=desc;
+  document.getElementById('overlay').classList.add('show');
+}
+function closeOverlay(){document.getElementById('overlay').classList.remove('show');}
+
+// ═══ LEARN SECTION ═══
+const THEORY_GUIDES=[
+  {id:'building_blocks',icon:'🎵',color:'#4ab0f0',title:'The Building Blocks',sub:'12 notes, semitones & the chromatic scale',quizMode:'notes_in_key',
+   content:`<h2>12 Notes. That's It.</h2>
+<p>Before anything else, here's the one fact that unlocks everything: <strong>there are only 12 notes in Western music</strong>. Every scale, chord, key, and riff is built from combinations of these 12 notes repeating across different octaves.</p>
+<div class="formula">A · A#/Bb · B · C · C#/Db · D · D#/Eb · E · F · F#/Gb · G · G#/Ab</div>
+<p>This is the <strong>chromatic scale</strong>. The gap between any two neighbouring notes is a <strong>semitone</strong> (one fret on the guitar). Two semitones = one <strong>tone</strong>.</p>
+<div class="callout"><strong>Critical fact:</strong> B–C and E–F have no sharp/flat between them. They're already just one semitone apart. This trips people up constantly — remember it early.</div>
+<h2>On The Guitar</h2>
+<p>Every fret is exactly one semitone. Move up one fret = go up one semitone. The six open strings (low to high) are: <strong>E — A — D — G — B — E</strong>. Memory aid: "Eddie Ate Dynamite, Good Bye Eddie."</p>
+<p>The note at the 12th fret of any string is the same note as the open string, one octave higher. The fretboard simply repeats from that point.</p>`},
+
+  {id:'major_scale',icon:'📐',color:'#f0c040',title:'The Major Scale',sub:'The master template — everything builds from this',quizMode:'notes_in_key',
+   content:`<h2>If Theory Had A Spine, This Is It</h2>
+<p>The major scale is a sequence of 7 notes chosen from the 12 chromatic notes. Learn this one pattern and the rest of theory starts to make sense.</p>
+<div class="formula">T — T — S — T — T — T — S</div>
+<p>T = Tone (2 frets), S = Semitone (1 fret). Apply this starting on any note and you get the major scale of that note.</p>
+<h2>G Major — Why F# Not F?</h2>
+<p>Start on G and apply the formula:</p>
+<div class="note-row"><div class="note-pill hi">G</div><div class="note-pill">+T</div><div class="note-pill hi">A</div><div class="note-pill">+T</div><div class="note-pill hi">B</div><div class="note-pill">+S</div><div class="note-pill hi">C</div><div class="note-pill">+T</div><div class="note-pill hi">D</div><div class="note-pill">+T</div><div class="note-pill hi">E</div><div class="note-pill">+T</div><div class="note-pill hi">F#</div><div class="note-pill">+S</div><div class="note-pill hi">G</div></div>
+<p>After E, the formula demands a Tone (2 frets). E to F is only one fret — not far enough. E to F# is two frets — that's why G major uses F# and not F.</p>
+<div class="callout"><strong>The formula forces certain notes to be sharped or flatted. It's not arbitrary — it's mathematics.</strong></div>
+<h2>C Major — The Easy One</h2>
+<p>C major is the only key with no sharps or flats: C D E F G A B. The natural spacing of those notes already follows the T T S T T T S pattern perfectly. Every other key needs at least one sharp or flat to maintain that same pattern from a different starting point.</p>`},
+
+  {id:'chords_from_scales',icon:'🎸',color:'#f0c040',title:'How Chords Come From Scales',sub:'Why F#dim exists — and why it has to',quizMode:'chords_in_key',
+   content:`<h2>The Question That Unlocks Everything</h2>
+<p>Every chord in a key is built by <strong>stacking notes from the scale</strong>. To build a chord on any note, take that note plus the 3rd and 5th above it — but only using notes already in the scale.</p>
+<h2>G Major — Full Chord Table</h2>
+<table><tr><th>Degree</th><th>Root</th><th>3rd</th><th>5th</th><th>Result</th></tr>
+<tr><td>I</td><td>G</td><td>B</td><td>D</td><td class="maj">G Major</td></tr>
+<tr><td>ii</td><td>A</td><td>C</td><td>E</td><td class="min">A minor</td></tr>
+<tr><td>iii</td><td>B</td><td>D</td><td>F#</td><td class="min">B minor</td></tr>
+<tr><td>IV</td><td>C</td><td>E</td><td>G</td><td class="maj">C Major</td></tr>
+<tr><td>V</td><td>D</td><td>F#</td><td>A</td><td class="maj">D Major</td></tr>
+<tr><td>vi</td><td>E</td><td>G</td><td>B</td><td class="min">E minor</td></tr>
+<tr><td>vii°</td><td>F#</td><td>A</td><td>C</td><td class="dim">F# diminished</td></tr></table>
+<h2>Why F#dim And Not Just F#?</h2>
+<p>Stack the 3rd and 5th above F# using <em>only G major notes</em> and you get F#, A, C. The gap F#→A is a minor 3rd, and F#→C is a diminished 5th (tritone). That combination <em>is</em> a diminished chord — the scale forced it.</p>
+<div class="callout"><strong>The chord quality isn't a choice — it's a consequence of the scale. The scale determines everything.</strong></div>
+<div class="formula">I Maj · ii min · iii min · IV Maj · V Maj · vi min · vii° dim</div>
+<p>This pattern is identical in every major key. Learn it and you know the chord qualities for all 12 keys.</p>`},
+
+  {id:'chord_quality_guide',icon:'🎼',color:'#c060f0',title:'Chord Quality',sub:'Major, minor, diminished — what makes each one',quizMode:'chord_quality',
+   content:`<h2>One Note Changes Everything</h2>
+<p>The difference between a C major and C minor chord is a single note — the middle note (the third). Lower the major 3rd by one semitone and you get a minor 3rd, and the chord shifts from bright to dark.</p>
+<div class="formula">Major = Root + 4 semitones + 7 semitones</div>
+<div class="formula">Minor = Root + 3 semitones + 7 semitones</div>
+<div class="formula">Diminished = Root + 3 semitones + 6 semitones</div>
+<h2>Quick Reference — Every Key Pattern</h2>
+<table><tr><th>Degree</th><th>Major Key</th><th>Minor Key</th></tr>
+<tr><td>1st</td><td class="maj">Major (I)</td><td class="min">minor (i)</td></tr>
+<tr><td>2nd</td><td class="min">minor (ii)</td><td class="dim">dim (ii°)</td></tr>
+<tr><td>3rd</td><td class="min">minor (iii)</td><td class="maj">Major (III)</td></tr>
+<tr><td>4th</td><td class="maj">Major (IV)</td><td class="min">minor (iv)</td></tr>
+<tr><td>5th</td><td class="maj">Major (V)</td><td class="min">minor (v)</td></tr>
+<tr><td>6th</td><td class="min">minor (vi)</td><td class="maj">Major (VI)</td></tr>
+<tr><td>7th</td><td class="dim">dim (vii°)</td><td class="maj">Major (VII)</td></tr></table>
+<div class="callout"><strong>Quick shortcut for major keys:</strong> Chords 1, 4, 5 are Major. Chords 2, 3, 6 are minor. Chord 7 is diminished.</div>`},
+
+  {id:'number_system',icon:'📊',color:'#f08040',title:'The Number System',sub:'I ii iii IV V vi vii° — the universal language',quizMode:'scale_degrees',
+   content:`<h2>Why Numbers?</h2>
+<p>Musicians use Roman numerals to describe chords so the relationship works in <strong>any key</strong>. Instead of "G major, A minor, B minor" you say "I, ii, iii" — and that works whether you're in G, C, D, or any other key.</p>
+<p>UPPERCASE = Major. lowercase = minor. ° = diminished.</p>
+<div class="formula">I — ii — iii — IV — V — vi — vii°</div>
+<h2>G Major as an example</h2>
+<table><tr><th>Number</th><th>Chord</th><th>Quality</th></tr>
+<tr><td>I</td><td>G</td><td class="maj">Major</td></tr>
+<tr><td>ii</td><td>Am</td><td class="min">minor</td></tr>
+<tr><td>iii</td><td>Bm</td><td class="min">minor</td></tr>
+<tr><td>IV</td><td>C</td><td class="maj">Major</td></tr>
+<tr><td>V</td><td>D</td><td class="maj">Major</td></tr>
+<tr><td>vi</td><td>Em</td><td class="min">minor</td></tr>
+<tr><td>vii°</td><td>F#dim</td><td class="dim">dim</td></tr></table>
+<div class="callout"><strong>This changes everything:</strong> A "I–IV–V" progression in A is A–D–E. In G it's G–C–D. In E it's E–A–B. The relationships are identical — only the pitch shifts. Think in numbers, not chord names.</div>
+<h2>The V Chord — The Engine Of Music</h2>
+<p>The V chord has the strongest pull back to the I. This tension–resolution (V→I) is the engine behind most Western music. In C major: G → C. The notes B and F in the G chord both resolve inward — B up to C, F down to E. That double resolution is what makes music feel satisfying.</p>`},
+
+  {id:'pentatonic',icon:'🎸',color:'#50e090',title:'The Pentatonic Scale',sub:'The guitarist\'s first language — and most used',quizMode:'notes_in_key',
+   content:`<h2>Five Notes That Sound Good Over Almost Anything</h2>
+<p>The pentatonic is the major scale with two notes removed — specifically the 4th and 7th (the most harmonically tense ones). What's left sounds great over almost any chord progression.</p>
+<h2>Minor Pentatonic — Your Main Lead Scale</h2>
+<div class="formula">Root — ♭3rd — 4th — 5th — ♭7th</div>
+<p>In A: <strong>A – C – D – E – G</strong>. This is the scale for virtually all classic rock and blues lead guitar. Jimmy Page, Eric Clapton, Slash, QOTSA's lead work — all primarily minor pentatonic.</p>
+<div class="callout"><strong>John Mayer's Gravity solo</strong> is just the minor pentatonic moved up and down the fretboard. Once you know where the boxes sit, you can play it. It's a process, not magic.</div>
+<h2>The Relative Trick</h2>
+<p>The A minor pentatonic and C major pentatonic contain <em>exactly the same notes</em>. They share the relative key relationship. Use A minor pentatonic over A minor chords — it also works over C major progressions. Switch focus depending on which chord is "home."</p>
+<h2>Blues Scale</h2>
+<p>Minor pentatonic + one extra note: the ♭5th (blue note). In A: A – C – D – Eb – E – G. That Eb is the sound of the blues. Don't land on it — bend through it or pass over it on the way to the E.</p>`},
+
+  {id:'relative_keys',icon:'🔄',color:'#f05050',title:'Relative Keys',sub:'Same notes, different starting point, different mood',quizMode:'relative_minor',
+   content:`<h2>What Are Relative Keys?</h2>
+<p>Every major key has a relative minor — a minor key that uses exactly the same notes. Same collection, different home base, completely different mood.</p>
+<div class="formula">Major root → down 3 semitones → Relative minor</div>
+<table><tr><th>Major Key</th><th>Relative Minor</th></tr>
+<tr><td>C Major</td><td>A minor</td></tr>
+<tr><td>G Major</td><td>E minor</td></tr>
+<tr><td>D Major</td><td>B minor</td></tr>
+<tr><td>A Major</td><td>F# minor</td></tr>
+<tr><td>E Major</td><td>C# minor</td></tr>
+<tr><td>F Major</td><td>D minor</td></tr></table>
+<div class="callout"><strong>G major and E minor share the same 7 chords:</strong> G Am Bm C D Em F#dim — just reordered with a different home base. A song using those same chords can feel major or minor depending on which chord it resolves to.</div>
+<h2>Why This Matters On Guitar</h2>
+<p>The A minor pentatonic and C major pentatonic are relative keys — same box shape, different tonal centre. Stairway To Heaven's solo is in A minor — which is the same notes as C major. Understanding relative keys doubles your scale options without learning anything new.</p>`},
+
+  {id:'modes',icon:'🌙',color:'#c060f0',title:'Modes',sub:'Seven scales for the price of one',quizMode:'chord_quality',
+   content:`<h2>Not As Mysterious As They Sound</h2>
+<p>Modes are the major scale started from a different note. The actual notes don't change — only the note you treat as "home" changes, and that shifts the emotional character entirely.</p>
+<table><tr><th>Mode</th><th>Character</th><th>Used In</th></tr>
+<tr><td><strong>Ionian</strong> (1st)</td><td>= Major scale</td><td>Pop, country, folk</td></tr>
+<tr><td><strong>Dorian</strong> (2nd)</td><td>Funky, soulful minor</td><td>Rock, funk, jazz</td></tr>
+<tr><td><strong>Phrygian</strong> (3rd)</td><td>Dark, Spanish, metal</td><td>Flamenco, metal</td></tr>
+<tr><td><strong>Lydian</strong> (4th)</td><td>Dreamy, floating</td><td>Film scores, prog</td></tr>
+<tr><td><strong>Mixolydian</strong> (5th)</td><td>Bluesy major</td><td>Rock, blues, folk</td></tr>
+<tr><td><strong>Aeolian</strong> (6th)</td><td>= Natural minor</td><td>Rock, metal</td></tr>
+<tr><td><strong>Locrian</strong> (7th)</td><td>Unstable, dissonant</td><td>Jazz, metal</td></tr></table>
+<div class="callout"><strong>Dorian:</strong> Santana lives here. Smooth minor with a raised 6th — more soulful than natural minor. "Smoke on the Water" is Dorian.<br><strong>Mixolydian:</strong> Major scale with a ♭7. "Sweet Home Alabama." Most of AC/DC. Classic rock in general.<br><strong>Phrygian:</strong> The metal mode. Metallica's "Wherever I May Roam."</div>`},
+];
+
+const PRACTICE_GUIDES=[
+  {id:'guitar_practice',icon:'🎸',color:'#f0c040',title:'Guitar Practice Guide',sub:'Structured daily routine — 30 to 60 minutes',quizMode:null,
+   content:`<h2>The Structure</h2>
+<p>The mistake most self-taught guitarists make is noodling rather than practising. Noodling feels comfortable but doesn't build new skills. Structure does.</p>
+<h2>Warm Up — 5 mins</h2>
+<div class="practice-block"><div class="pb-header"><div class="pb-icon">🤲</div><div class="pb-title">Physical Warm Up</div><div class="pb-time">5 MIN</div></div>
+<div class="pb-item">Chromatic exercise: 1-2-3-4 across all strings, slow and even</div>
+<div class="pb-item">Stretch fingers gently — spider stretches across the neck</div>
+<div class="pb-item">Slow down if anything hurts — pain is not progress</div></div>
+<h2>Technique — 10 mins</h2>
+<div class="practice-block"><div class="pb-header"><div class="pb-icon">⚙️</div><div class="pb-title">Focused Technique</div><div class="pb-time">10 MIN</div></div>
+<div class="pb-item">Alternate picking: single string scales at 60 BPM, gradually increase</div>
+<div class="pb-item">Chord changes: pick two chords, 1 min each transition, smooth not fast</div>
+<div class="pb-item">Barre chords: F major or Bm, hold for 30 seconds until it rings clean</div>
+<div class="pb-item">String bends: A string at 7th fret, bend up a tone, match pitch to note above</div></div>
+<h2>Theory Application — 10 mins</h2>
+<div class="practice-block"><div class="pb-header"><div class="pb-icon">🧠</div><div class="pb-title">Theory Into Playing</div><div class="pb-time">10 MIN</div></div>
+<div class="pb-item">Play through a key's chords using Roman numerals (I-ii-iii-IV-V-vi)</div>
+<div class="pb-item">Play the pentatonic scale over a backing track in the same key</div>
+<div class="pb-item">Pick 3 notes from the scale and build a simple 4-bar melody</div>
+<div class="pb-item">Fretbrain drill: 10 questions on whichever mode you're studying</div></div>
+<h2>Repertoire — 15 mins</h2>
+<div class="practice-block"><div class="pb-header"><div class="pb-icon">🎵</div><div class="pb-title">Songs & Riffs</div><div class="pb-time">15 MIN</div></div>
+<div class="pb-item">Work on one song section — verse OR chorus, not both</div>
+<div class="pb-item">Slow it down to 70% speed, nail the notes before adding speed</div>
+<div class="pb-item">Record yourself every 2 weeks — you hear mistakes you don't feel</div></div>
+<h2>Free Play — 10 mins</h2>
+<div class="practice-block"><div class="pb-header"><div class="pb-icon">🎶</div><div class="pb-title">Improvise & Explore</div><div class="pb-time">10 MIN</div></div>
+<div class="pb-item">Pick a key, put a backing track on, improvise with pentatonic only</div>
+<div class="pb-item">Try landing on chord tones (root, 3rd, 5th) at the start of each bar</div>
+<div class="pb-item">Experiment with one new technique — vibrato, hammer-on, slide</div></div>
+<div class="callout"><strong>The principle:</strong> Consistent 30-minute sessions beat occasional 2-hour marathons. Five days a week of focused practice will transform your playing faster than anything else.</div>`},
+
+  {id:'songwriting_process',icon:'✍️',color:'#50e090',title:'The Songwriter\'s Process',sub:'A repeatable framework for writing songs on guitar',quizMode:null,
+   content:`<h2>You Don't Need to Be "Naturally Creative"</h2>
+<p>Creativity in music isn't about pulling ideas from nowhere — it's about making choices within a system you understand. Every professional songwriter works within constraints. The constraints <em>are</em> the process.</p>
+<h2>Step 1 — Choose A Key</h2>
+<p>Go to the Write section of this app and pick a key. Consider the mood you want: E major for raw power, A minor for dark emotion, G major for warmth and openness, D minor for melancholy. The key sets the emotional palette.</p>
+<h2>Step 2 — Pick Your Chords</h2>
+<p>You have 7 chords available. You don't need to use all of them. Most songs use 3–4. Start with the I, IV, V and vi — these four chords cover the vast majority of rock and pop.</p>
+<div class="callout"><strong>The puzzle approach:</strong> Think of the 7 chords as your puzzle pieces. You don't need to invent anything — just arrange the pieces. The rules of the key ensure they all fit together.</div>
+<h2>Step 3 — Find A Progression</h2>
+<p>Use the progressions in the Write section as starting points. Try I–V–vi–IV for something uplifting, vi–IV–I–V for more emotional, i–VII–VI–V for dramatic and cinematic. Strum through each one and see what sparks something.</p>
+<h2>Step 4 — Write The Lead / Solo</h2>
+<p>The minor pentatonic of the key (or its relative minor) works over the entire progression. Start in Box 1 at the root note. Play slowly. Listen for notes that sound resolved over each chord — those are your melody notes. The ones that sound tense are passing notes.</p>
+<div class="callout"><strong>John Mayer's Gravity:</strong> The lead part is just the minor pentatonic moved up and down the neck. Once you know the framework, complexity becomes a choice — not a requirement.</div>
+<h2>Step 5 — Structure It</h2>
+<p>Verse: lower energy, fewer chords (I and vi work well). Chorus: bigger, more chords, hit the IV and V for lift. Bridge: try a chord you haven't used yet — the iii or ii. Pre-chorus: build tension with the V chord.</p>`},
+];
+
+const BASS_GUIDES=[
+  {id:'bass_fretboard_guide',icon:'🎵',color:'#4ab0f0',title:'Bass Fretboard',sub:'Navigate the bass neck for any chord progression',quizMode:null,
+   content:`<h2>The Bass Player's Job</h2>
+<p>For adding bass to guitar parts, your main job is to <strong>anchor the harmony</strong> and <strong>lock in with the rhythm</strong>. You don't need complex bass lines — root notes played in rhythm are powerful and musical.</p>
+<h2>Finding Root Notes</h2>
+<p>The bass is tuned E A D G (low to high). The root note of any chord in your guitar progression sits on the fretboard in predictable positions. Memorise these anchor shapes:</p>
+<table><tr><th>Note</th><th>E string</th><th>A string</th></tr>
+<tr><td>E</td><td>Open</td><td>7th fret</td></tr>
+<tr><td>A</td><td>5th fret</td><td>Open</td></tr>
+<tr><td>D</td><td>10th fret</td><td>5th fret</td></tr>
+<tr><td>G</td><td>3rd fret</td><td>10th fret</td></tr>
+<tr><td>C</td><td>8th fret</td><td>3rd fret</td></tr>
+<tr><td>B</td><td>7th fret (A str from B)</td><td>2nd fret</td></tr></table>
+<h2>The Octave Shape</h2>
+<p>The octave of any note is always: <strong>2 strings higher, 2 frets toward the body</strong>. Root on E string fret 5 (A) → octave on D string fret 7. Alternating between root and octave is an instant bass line that sounds musical and full.</p>
+<div class="callout"><strong>Simple but effective:</strong> Root note on beat 1, octave on beat 3. Follow the kick drum on beats 1 and 3, snare on 2 and 4. That combination locks guitar and bass together immediately.</div>`},
+
+  {id:'bass_practice',icon:'🎸',color:'#4ab0f0',title:'Bass Practice Guide',sub:'Getting bass onto guitar parts quickly',quizMode:null,
+   content:`<h2>The Goal</h2>
+<p>You're not aiming to become a dedicated bass player — you're adding bass to guitar arrangements. That means the priority is: lock in with the rhythm, follow the root notes of the chord progression, and keep it simple.</p>
+<h2>Daily Routine — 20 mins</h2>
+<div class="practice-block"><div class="pb-header"><div class="pb-icon">🎵</div><div class="pb-title">Root Notes First</div><div class="pb-time">5 MIN</div></div>
+<div class="pb-item">Play root notes of a I–IV–V progression, one note per bar, even tempo</div>
+<div class="pb-item">Use alternate fingers (index and middle) — no picking to start</div>
+<div class="pb-item">Mute unused strings with your right palm for a tight sound</div></div>
+<div class="practice-block"><div class="pb-header"><div class="pb-icon">🥁</div><div class="pb-title">Rhythm Lock</div><div class="pb-time">5 MIN</div></div>
+<div class="pb-item">Put on a drum beat at 80 BPM, play root on beat 1 only, feel the groove</div>
+<div class="pb-item">Add octave on beat 3 — root on 1, octave on 3</div>
+<div class="pb-item">Try: root on 1, rest on 2, root on the "and" of 2, rest on 3</div></div>
+<div class="practice-block"><div class="pb-header"><div class="pb-icon">🎶</div><div class="pb-title">Apply To A Song</div><div class="pb-time">10 MIN</div></div>
+<div class="pb-item">Take a chord progression you're working on and write out the root note sequence</div>
+<div class="pb-item">Play through it following the chord changes with root notes only</div>
+<div class="pb-item">Once comfortable, add octaves and passing notes between chord changes</div>
+<div class="pb-item">Record guitar + bass together and listen back — does the bass support or clash?</div></div>
+<div class="callout"><strong>The golden rule:</strong> If in doubt, play less. A bass line that locks with the kick drum and hits root notes at chord changes is more powerful than a busy line that fights the guitar.</div>`},
+];
+
+let currentLearnTab='theory';
+function learnTab(tab,el){
+  currentLearnTab=tab;
+  document.querySelectorAll('.ltab').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
+  renderLearn();
+}
+function renderLearn(){
+  const cont=document.getElementById('learnContent');
+  let guides=currentLearnTab==='theory'?THEORY_GUIDES:currentLearnTab==='practice'?PRACTICE_GUIDES:BASS_GUIDES;
+  cont.innerHTML=guides.map(g=>`
+    <div class="guide-card" onclick="openGuide('${g.id}')">
+      <div class="gc-icon" style="background:${g.color}22;color:${g.color}">${g.icon}</div>
+      <div class="gc-body"><div class="gc-title">${g.title}</div><div class="gc-sub">${g.sub}</div></div>
+      <div class="gc-arr">›</div>
+    </div>`).join('');
+}
+
+const ALL_GUIDES=[...THEORY_GUIDES,...PRACTICE_GUIDES,...BASS_GUIDES];
+function openGuide(id){
+  const g=ALL_GUIDES.find(x=>x.id===id);if(!g)return;
+  currentGuideMode=g.quizMode;
+  document.getElementById('gdTitle').textContent=g.title.toUpperCase();
+  document.getElementById('gdContent').innerHTML=g.content;
+  const qBtn=document.getElementById('gdQuizBtn');
+  qBtn.style.display=g.quizMode?'flex':'none';
+  showScreen('sc-guide-detail');
+}
+function closeGuide(){showScreen('sc-learn');}
+
+// ═══ SONGWRITER SECTION ═══
+const KEY_NOTATION={'C':'sharp','G':'sharp','D':'sharp','A':'sharp','E':'sharp','B':'sharp','F':'flat','Bb':'flat','Eb':'flat','Ab':'flat','Am':'sharp','Em':'sharp','Dm':'flat','Gm':'flat','Cm':'flat','Fm':'flat'};
+const SONG_KEYS=[
+  {id:'C',root:0,type:'major',display:'C',label:'Maj'},{id:'G',root:7,type:'major',display:'G',label:'Maj'},
+  {id:'D',root:2,type:'major',display:'D',label:'Maj'},{id:'A',root:9,type:'major',display:'A',label:'Maj'},
+  {id:'E',root:4,type:'major',display:'E',label:'Maj'},{id:'Bb',root:10,type:'major',display:'Bb',label:'Maj'},
+  {id:'F',root:5,type:'major',display:'F',label:'Maj'},{id:'Am',root:9,type:'minor',display:'Am',label:'Min'},
+  {id:'Em',root:4,type:'minor',display:'Em',label:'Min'},{id:'Dm',root:2,type:'minor',display:'Dm',label:'Min'},
+  {id:'Gm',root:7,type:'minor',display:'Gm',label:'Min'},{id:'Bm',root:11,type:'minor',display:'Bm',label:'Min'},
+  {id:'Cm',root:0,type:'minor',display:'Cm',label:'Min'},{id:'Fm',root:5,type:'minor',display:'Fm',label:'Min'},
+];
+const KEY_MOODS={C:'Bright, neutral, clean. No sharps or flats — a great starting key.',G:'Open and resonant. Feels natural on guitar. Warm and inviting.',D:'Bright and joyful. Sounds great with open strings. Common in folk and country.',A:'Full-bodied and rock-ready. Open A string rings out beautifully.',E:'Raw power. All open strings ring sympathetically. Blues and rock at home.',Bb:'Slightly darker major. Common in soul and pop. Warm and rounded.',F:'Clear and slightly serious. Needs barre chords — slightly harder on guitar.',Am:'Dark, emotional, expressive. The most natural minor key on guitar.',Em:'Melancholic and deep. Open strings add weight and resonance.',Dm:'Sad, introspective. The "saddest of keys." Great for slow ballads.',Gm:'Restless and unsettled. Darker than Am. Dramatic.',Bm:'Brooding and complex. Requires barre — used a lot in rock.',Cm:'Tragic and dark. Beethoven\'s key. Powerful.',Fm:'Very dark and heavy. Uncommon on guitar but impactful.'};
+const SONG_EXAMPLES={C:'"Let It Be" — Beatles · "No Woman No Cry" — Bob Marley',G:'"Wonderwall" — Oasis · "Sweet Home Alabama" — Lynyrd Skynyrd',D:'"Wish You Were Here" — Pink Floyd · "Brown Eyed Girl" — Van Morrison',A:'"R U Mine?" — Arctic Monkeys · "Sweet Home Alabama" (riff)',E:'"Whole Lotta Love" — Led Zeppelin · "Johnny B. Goode" · Most 12-bar blues',Bb:'"Hey Joe" — Jimi Hendrix · Many soul and Motown songs',F:'"Hotel California" · "Knockin\' on Heaven\'s Door" verse',Am:'"Stairway to Heaven" — Led Zeppelin · "Comfortably Numb" — Pink Floyd',Em:'"Black" — Pearl Jam · "Nothing Else Matters" — Metallica',Dm:'"The Sound of Silence" — Simon & Garfunkel · "Losing My Religion" — REM',Gm:'"Sympathy for the Devil" — Rolling Stones',Bm:'"Do I Wanna Know?" — Arctic Monkeys · "More Than a Feeling" — Boston',Cm:'"Hurt" — NIN / Johnny Cash · "Fix You" — Coldplay',Fm:'"Black Dog" — Led Zeppelin · Many heavy rock tracks'};
+const PROGRESSIONS={C:[{name:'The Classic Pop',nums:['I','V','vi','IV'],desc:'The most-used progression in pop. Works for virtually any mood.',genre:'Pop · Rock · Indie'},{name:'The Ballad',nums:['vi','IV','I','V'],desc:'Start on the minor chord for a more emotional feel.',genre:'Ballad · Emotional'},{name:'The Simple Three',nums:['I','IV','V'],desc:'Foundation of rock and blues. Three chords, infinite songs.',genre:'Rock · Blues · Folk'},{name:'The ii-V-I',nums:['ii','V','I'],desc:'Builds tension through ii to V, then releases home.',genre:'Jazz feel · Pop'}],G:[{name:'The Classic Pop',nums:['I','V','vi','IV'],desc:'The most-used progression — here in G.',genre:'Pop · Rock · Indie'},{name:'Oasis Special',nums:['I','IV','vi','V'],desc:'Sounds immediately like Britpop.',genre:'Britpop · Indie'},{name:'The Simple Three',nums:['I','IV','V'],desc:'Clean, direct, works at any tempo.',genre:'Rock · Blues · Country'},{name:'Folk Feel',nums:['I','V','IV','I'],desc:'Circular, resolves back to I.',genre:'Folk · Country · Classic Rock'}],D:[{name:'The Classic Pop',nums:['I','V','vi','IV'],desc:'Bright and driving in D.',genre:'Pop · Rock'},{name:'Drop to Minor',nums:['I','vi','IV','V'],desc:'I to vi creates a moment of darkness before lifting back.',genre:'Emotional Pop'},{name:'The Simple Three',nums:['I','IV','V'],desc:'Very natural in D — the open strings ring beautifully.',genre:'Blues · Rock · Folk'}],A:[{name:'The Rock Three',nums:['I','IV','V'],desc:'Classic rock in A. Massive with power chords.',genre:'Rock · Blues'},{name:'The Classic Pop',nums:['I','V','vi','IV'],desc:'Bright and energetic in A.',genre:'Pop · Rock'},{name:'The Turnaround',nums:['I','vi','IV','V'],desc:'Very common in rock and pop.',genre:'Rock · Pop'}],E:[{name:'Blues Backbone',nums:['I','IV','V'],desc:'The 12-bar blues lives here.',genre:'Blues · Rock · Classic Rock'},{name:'The Classic Pop',nums:['I','V','vi','IV'],desc:'Powerful in E with open strings resonating.',genre:'Rock · Pop'},{name:'Power Progression',nums:['I','VII','IV','I'],desc:'Borrowing the VII gives a massive rock sound.',genre:'Hard Rock · Metal'}],Bb:[{name:'The Classic Pop',nums:['I','V','vi','IV'],desc:'Warm and full in Bb.',genre:'Soul · Pop'},{name:'The Simple Three',nums:['I','IV','V'],desc:'Foundational three chords.',genre:'Blues · Pop'}],F:[{name:'The Classic Pop',nums:['I','V','vi','IV'],desc:'Works beautifully in F — try arpeggiated chords.',genre:'Pop · Indie'},{name:'The Ballad',nums:['vi','IV','I','V'],desc:'Start on Dm for a melancholic intro.',genre:'Ballad · Slow Rock'}],Am:[{name:'The Andalusian',nums:['i','VII','VI','V'],desc:'The most dramatic descending progression. Stairway to Heaven.',genre:'Rock · Classical · Spanish'},{name:'Natural Minor',nums:['i','iv','VII','III'],desc:'Circular and dark. Great for brooding verses.',genre:'Rock · Alternative'},{name:'The Simple Minor',nums:['i','VI','VII','i'],desc:'Direct and powerful. Common in rock and punk.',genre:'Rock · Punk · Metal'}],Em:[{name:'The Open Minor',nums:['i','VII','VI','VII'],desc:'Very natural on guitar in Em — open strings ring out.',genre:'Acoustic · Folk · Rock'},{name:'The Andalusian',nums:['i','VII','VI','V'],desc:'Descending, dramatic, powerful.',genre:'Rock · Classical'},{name:'Metallica Formula',nums:['i','VI','III','VII'],desc:'Cinematic and heavy.',genre:'Metal · Rock'}],Dm:[{name:'The Andalusian',nums:['i','VII','VI','V'],desc:'Very dramatic and melancholic.',genre:'Classical · Rock · Drama'},{name:'The Sad Ballad',nums:['i','VI','III','VII'],desc:'Emotional and cinematic.',genre:'Ballad · Acoustic'}],Gm:[{name:'The Andalusian',nums:['i','VII','VI','V'],desc:'Intense and dramatic.',genre:'Rock · Drama'},{name:'Minor Lift',nums:['i','VI','III','VII'],desc:'Sweeping and cinematic.',genre:'Cinematic · Rock'}],Bm:[{name:'The Andalusian',nums:['i','VII','VI','V'],desc:'Common in rock songs in Bm.',genre:'Rock · Indie'},{name:'Arctic Style',nums:['i','VI','III','VII'],desc:'Cinematic — works uptempo or slow.',genre:'Indie Rock · Alternative'}],Cm:[{name:'Dark Drama',nums:['i','VII','VI','V'],desc:'Haunting and powerful.',genre:'Classical · Cinematic · Metal'},{name:'The Emotional',nums:['i','VI','III','VII'],desc:'Big and sweeping.',genre:'Anthemic · Rock'}],Fm:[{name:'Dark Descent',nums:['i','VII','VI','V'],desc:'Very heavy and dramatic.',genre:'Metal · Hard Rock'},{name:'The Emotional',nums:['i','VI','III','VII'],desc:'Cinematic — use sparingly for impact.',genre:'Cinematic · Rock'}]};
+const SCALE_INFO={major:{pentatonic:{name:'Major Pentatonic',use:'Melody/Lead',desc:'Bright, happy, melodic. Great for lead lines over major chord progressions. The "country" or "classic rock" sound.',tip:'Box 1 at the root note is your home. Use for melodic lead parts that sound bright and resolved.'},minorPent:{name:'Relative Minor Pentatonic',use:'Lead/Blues',desc:'Even in a major key, the relative minor pentatonic works. Adds grit and blues edge. Jimmy Page, Eric Clapton, and Slash all use this over major progressions.',tip:'Find the vi chord (relative minor) and use its minor pentatonic shape. Same notes as the key — different home feeling.'},natural:{name:'Major Scale',use:'Melody/Improv',desc:'All 7 notes of the key. More "correct" sounding — use for writing actual melodies.',tip:'Play up the neck starting on the root on the low E string.'}},minor:{pentatonic:{name:'Minor Pentatonic',use:'Lead/Improv',desc:'THE rock and blues scale. 5 notes that all sound great. Sounds dark, edgy, emotional. If you learn one scale for lead guitar, this is it.',tip:'Box 1 at the root note. Move up the neck to get brighter. This is your main solo scale.'},blues:{name:'Blues Scale',use:'Lead/Blues',desc:'Minor pentatonic + the "blue note" (♭5). That one extra note is the sound of the blues. Bend into it for maximum feeling.',tip:'Same position as minor pentatonic. The blue note sits between the 4th and 5th. Bend through it, don\'t land on it.'},natural:{name:'Natural Minor Scale',use:'Melody/Improv',desc:'All 7 notes of the minor key. More note options for writing melodies. Darker and more complete than pentatonic.',tip:'Same root position as pentatonic but with more notes. Use for melodic writing.'}}};
+
+let selectedKey=null;
+function buildKeyGrid(){
+  const grid=document.getElementById('keyGrid');
+  grid.innerHTML=SONG_KEYS.map(k=>`
+    <div class="kbtn" id="kbtn_${k.id}" onclick="selectKey('${k.id}')">
+      <div class="kn">${k.display}</div>
+      <div class="kt">${k.label}</div>
+    </div>`).join('');
+}
+function selectKey(id){
+  selectedKey=id;
+  document.querySelectorAll('.kbtn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('kbtn_'+id).classList.add('active');
+  renderSongContent(id);
+}
+function renderSongContent(id){
+  const key=SONG_KEYS.find(k=>k.id===id);if(!key)return;
+  const useFlat=KEY_NOTATION[id]==='flat';
+  const chords=chordsInKey(NOTES[key.root],key.type);
+  const degs=key.type==='major'?MAJ_DEG:MIN_DEG;
+  const qualCls=(q)=>q==='Major'?'maj-c':q==='minor'?'min-c':'dim-c';
+  const chordNames=chords.map(c=>c.root+(c.quality==='minor'?'m':c.quality==='diminished'?'dim':''));
+  const progs=PROGRESSIONS[id]||[];
+  const scales=SCALE_INFO[key.type];
+
+  // resolve prog num to chord name
+  function resolveNum(num){
+    const dMap={I:0,ii:1,iii:2,IV:3,V:4,vi:5,'vii°':6,i:0,'ii°':1,III:2,iv:3,v:4,VI:5,VII:6};
+    const idx=dMap[num];return idx!==undefined?chordNames[idx]:num;
+  }
+
+  let html=`
+  <div class="mood-box"><div class="mood-label">KEY CHARACTER</div><div class="mood-text">${KEY_MOODS[id]||''}</div></div>
+  <div class="song-example"><div class="se-label">🎵 SONGS IN THIS KEY</div><div class="se-text">${SONG_EXAMPLES[id]||''}</div></div>
+  <div class="song-section">
+    <div class="song-section-title">🎸 CHORDS IN ${key.display} ${key.type==='major'?'MAJOR':'MINOR'}</div>
+    <div style="display:flex;flex-wrap:wrap;">
+      ${chords.map((c,i)=>`<div class="chord-chip ${qualCls(c.quality)}" onclick="openChordModal('${chordNames[i]}')">\n        <div class="cc-deg">${degs[i]}</div>
+        <div class="cc-name">${chordNames[i]}</div>
+      </div>`).join('')}
+    </div>
+    <p style="font-size:12px;color:var(--muted);margin-top:10px;">Tap any chord to see its fingering diagram</p>
+  </div>
+  <div class="song-section">
+    <div class="song-section-title">🔄 CHORD PROGRESSIONS</div>
+    ${progs.map(p=>`<div class="prog-card">
+      <div class="pc-name">${p.name}</div>
+      <div class="pc-chords">${p.nums.map(n=>`<div class="prog-chip">${resolveNum(n)}</div>`).join('')}</div>
+      <div class="pc-desc">${p.desc}</div>
+      <div class="pc-genre">${p.genre}</div>
+    </div>`).join('')}
+  </div>
+  <div class="song-section">
+    <div class="song-section-title">🎵 SCALES FOR LEAD &amp; MELODY</div>
+    ${Object.entries(scales).map(([key,s])=>`<div class="scale-pill" onclick="openScaleModal('${key}','${id}')" style="cursor:pointer">
+      <div style="display:flex;align-items:center;justify-content:space-between;">
+        <div><span class="sp-name">${s.name}</span><span class="sp-use">${s.use}</span></div>
+        <div style="color:var(--gold);font-size:18px;">›</div>
+      </div>
+      <div class="sp-desc">${s.desc}</div>
+      <div class="sp-desc" style="color:var(--gold);margin-top:4px;">→ ${s.tip}</div>
+    </div>`).join('')}
+  </div>`;
+  document.getElementById('songContent').innerHTML=html;
+}
+
+// ═══ CHORD LIBRARY ═══
+const FINGER_COLORS={1:'#c0392b',2:'#d35400',3:'#27ae60',4:'#2980b9',B:'#8e44ad'};
+const CHORDS=[
+  {id:'C',name:'C Major',category:'major',difficulty:'beginner',desc:'One of the most important open chords. The X on the low E string means you mute it.',tip:'Curl your fingers to avoid muting the open strings. Press close to the fret.',variations:[{label:'Open C',frets:[null,3,2,0,1,0],fingers:[null,3,2,0,1,0],startFret:1},{label:'C (high)',frets:[8,10,10,9,8,8],fingers:['B','3','4','2','B','B'],startFret:8,barre:{fret:8,from:0,to:5}}]},
+  {id:'G',name:'G Major',category:'major',difficulty:'beginner',desc:'Essential open chord used in countless rock and pop songs.',tip:'Try fingers 2,3,4 — makes transitions to C and D easier.',variations:[{label:'Open G',frets:[3,2,0,0,0,3],fingers:[4,3,0,0,0,2],startFret:1},{label:'Barre G',frets:[3,5,5,4,3,3],fingers:['B',3,4,2,'B','B'],startFret:3,barre:{fret:3,from:0,to:5}}]},
+  {id:'D',name:'D Major',category:'major',difficulty:'beginner',desc:'A bright, ringing open chord. Only 4 strings — mute E and A.',tip:'Keep fingers curved, don\'t let them touch the open G string.',variations:[{label:'Open D',frets:[null,null,0,2,3,2],fingers:[null,null,0,1,3,2],startFret:1},{label:'Barre D',frets:[5,7,7,6,5,5],fingers:['B',3,4,2,'B','B'],startFret:5,barre:{fret:5,from:0,to:5}}]},
+  {id:'A',name:'A Major',category:'major',difficulty:'beginner',desc:'Three fingers on the second fret — one of the trickier open chords.',tip:'Try barring all three strings at fret 2 with your index finger.',variations:[{label:'Open A',frets:[null,0,2,2,2,0],fingers:[null,0,2,3,4,0],startFret:1},{label:'Barre A',frets:[5,7,7,6,5,5],fingers:['B',3,4,2,'B','B'],startFret:5,barre:{fret:5,from:0,to:5}}]},
+  {id:'E',name:'E Major',category:'major',difficulty:'beginner',desc:'Full, open, resonant — all 6 strings ring. A cornerstone of rock guitar.',tip:'This shape becomes a barre chord when slid up the neck.',variations:[{label:'Open E',frets:[0,2,2,1,0,0],fingers:[0,3,4,1,0,0],startFret:1}]},
+  {id:'Em',name:'E Minor',category:'minor',difficulty:'beginner',desc:'The easiest chord on guitar — just two fingers. Dark and powerful.',tip:'Use fingers 2 and 3 so your index is free for transitions.',variations:[{label:'Open Em',frets:[0,2,2,0,0,0],fingers:[0,2,3,0,0,0],startFret:1},{label:'Barre Em',frets:[7,9,9,8,7,7],fingers:['B',3,4,2,'B','B'],startFret:7,barre:{fret:7,from:0,to:5}}]},
+  {id:'Am',name:'A Minor',category:'minor',difficulty:'beginner',desc:'One of the most used chords in rock and indie. Moody, versatile.',tip:'Very similar shape to E major — notice the pattern shift.',variations:[{label:'Open Am',frets:[null,0,2,2,1,0],fingers:[null,0,3,2,1,0],startFret:1},{label:'Barre Am',frets:[5,7,7,5,5,5],fingers:['B',3,4,'B','B','B'],startFret:5,barre:{fret:5,from:0,to:5}}]},
+  {id:'Dm',name:'D Minor',category:'minor',difficulty:'beginner',desc:'Melancholic and emotive. A staple of minor key songs.',tip:'Like D major but with the B string fret moved — one note changes the mood.',variations:[{label:'Open Dm',frets:[null,null,0,2,3,1],fingers:[null,null,0,2,3,1],startFret:1}]},
+  {id:'Bm',name:'B Minor',category:'minor',difficulty:'intermediate',desc:'Requires a barre — the first "hard" chord most guitarists encounter.',tip:'Press close to the fret wire with the bony side of your index finger.',variations:[{label:'Barre Bm',frets:[2,3,4,4,2,2],fingers:['B',2,3,4,'B','B'],startFret:2,barre:{fret:2,from:0,to:5}},{label:'Bm (cheat)',frets:[null,2,3,4,4,2],fingers:[null,1,2,3,4,1],startFret:2}]},
+  {id:'F',name:'F Major',category:'major',difficulty:'intermediate',desc:'The infamous F chord — a full barre at the first fret. A major milestone.',tip:'Takes weeks to sound clean. Build strength gradually with short daily practice.',variations:[{label:'Full Barre F',frets:[1,3,3,2,1,1],fingers:['B',3,4,2,'B','B'],startFret:1,barre:{fret:1,from:0,to:5}},{label:'Mini F (cheat)',frets:[null,null,2,2,1,1],fingers:[null,null,3,4,1,1],startFret:1},{label:'Fmaj7 (easy)',frets:[null,null,2,2,1,0],fingers:[null,null,2,3,1,0],startFret:1}]},
+  {id:'G7',name:'G7',category:'7th',difficulty:'beginner',desc:'A dominant 7th with strong pull to C major. Common in blues and rock.',tip:'The ♭7 (F note) gives it bluesy tension. Try resolving it to C major.',variations:[{label:'Open G7',frets:[1,0,0,0,2,3],fingers:[1,0,0,0,2,3],startFret:1}]},
+  {id:'E7',name:'E7',category:'7th',difficulty:'beginner',desc:'A bluesy dominant 7th — instantly recognisable in blues and rock\'n\'roll.',tip:'Just lift your ring finger from E major. One finger change, huge tonal shift.',variations:[{label:'Open E7',frets:[0,2,0,1,0,0],fingers:[0,3,0,1,0,0],startFret:1}]},
+  {id:'A7',name:'A7',category:'7th',difficulty:'beginner',desc:'Warm, bluesy dominant 7th. Essential for 12-bar blues.',tip:'Alternate between A and A7 to hear how the 7th adds motion.',variations:[{label:'Open A7',frets:[null,0,2,0,2,0],fingers:[null,0,2,0,1,0],startFret:1}]},
+  {id:'D7',name:'D7',category:'7th',difficulty:'beginner',desc:'Bright, punchy dominant 7th. Common in country, blues and rock.',tip:'The ♭7 (C note) on the B string creates the tension.',variations:[{label:'Open D7',frets:[null,null,0,2,1,2],fingers:[null,null,0,2,1,3],startFret:1}]},
+  {id:'Fmaj7',name:'Fmaj7',category:'major',difficulty:'beginner',desc:'A gorgeous, dreamy alternative to full F major. Easier and beautiful.',tip:'Often a better choice than full F in acoustic settings.',variations:[{label:'Fmaj7',frets:[null,null,2,2,1,0],fingers:[null,null,2,3,1,0],startFret:1}]},
+  {id:'Em7',name:'Em7',category:'minor',difficulty:'beginner',desc:'Smooth, melancholic minor 7th. One of the easiest 7th chords.',tip:'You can play this with just one finger on the A string fret 2.',variations:[{label:'Open Em7',frets:[0,2,0,0,0,0],fingers:[0,2,0,0,0,0],startFret:1}]},
+  {id:'Am7',name:'Am7',category:'minor',difficulty:'beginner',desc:'Silky smooth minor 7th — one note change from Am.',tip:'Lift your ring finger from Am. That\'s it.',variations:[{label:'Open Am7',frets:[null,0,2,0,1,0],fingers:[null,0,2,0,1,0],startFret:1}]},
+  {id:'Cadd9',name:'Cadd9',category:'sus',difficulty:'beginner',desc:'A lush, full-sounding variation of C major. Huge in rock and pop.',tip:'Keep fingers 3 and 4 down while moving 1 and 2 — great for C to G transitions.',variations:[{label:'Cadd9',frets:[null,3,2,0,3,0],fingers:[null,3,2,0,4,0],startFret:1}]},
+  {id:'Dsus2',name:'Dsus2',category:'sus',difficulty:'beginner',desc:'Airy, open, unresolved. Floats beautifully — great for intros.',tip:'Sus chords have no 3rd — neither major nor minor. Very versatile.',variations:[{label:'Dsus2',frets:[null,null,0,2,3,0],fingers:[null,null,0,1,2,0],startFret:1}]},
+  {id:'Asus2',name:'Asus2',category:'sus',difficulty:'beginner',desc:'Open, ringing, atmospheric. Used heavily in Oasis-style Britpop.',tip:'Only 2 fingers needed — easy to hold while singing.',variations:[{label:'Asus2',frets:[null,0,2,2,0,0],fingers:[null,0,2,3,0,0],startFret:1}]},
+  {id:'BarreE',name:'Barre (E shape)',category:'barre',difficulty:'intermediate',desc:'Slide the E major shape up the neck to play any major chord.',tip:'Root note is on the low E string. Fret 2=F#, fret 3=G, fret 5=A, fret 7=B.',variations:[{label:'A major (fret 5)',frets:[5,7,7,6,5,5],fingers:['B',3,4,2,'B','B'],startFret:5,barre:{fret:5,from:0,to:5}},{label:'B major (fret 7)',frets:[7,9,9,8,7,7],fingers:['B',3,4,2,'B','B'],startFret:7,barre:{fret:7,from:0,to:5}}]},
+  {id:'BarreA',name:'Barre (A shape)',category:'barre',difficulty:'intermediate',desc:'The A major barre chord shape — root note on the A string.',tip:'At fret 2=B, fret 3=C, fret 5=D, fret 7=E.',variations:[{label:'D major (fret 5)',frets:[null,5,7,7,6,5],fingers:[null,'B',3,4,2,'B'],startFret:5,barre:{fret:5,from:1,to:5}}]},
+];
+let chordFilter='all';
+let bnRoot=null, bnQuality='major';
+
+// Note positions on E string (fret) and A string (fret)
+// E string: open=E, so note at fret = (4 + fret) % 12
+// A string: open=A, so note at fret = (9 + fret) % 12
+const NOTE_ORDER=['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+const NOTE_DISPLAY_MAP={'C#':'C#/A#','D#':'D#/Eb','F#':'F#/Gb','G#':'G#/Ab','A#':'A#/Bb'};
+
+function getEStringFret(note){
+  // E string open = index 4
+  const idx=NOTE_ORDER.indexOf(note);
+  let fret=(idx-4+12)%12;
+  return fret; // 0 = open E
+}
+function getAStringFret(note){
+  const idx=NOTE_ORDER.indexOf(note);
+  let fret=(idx-9+12)%12;
+  return fret; // 0 = open A
+}
+
+function filterChords(type,btn){
+  chordFilter=type;
+  document.querySelectorAll('.cf').forEach(b=>{if(!b.classList.contains('tf'))b.classList.remove('active');});btn.classList.add('active');
+  renderChords();
+}
+let triadFilter='all';
+function filterTriads(type,btn){
+  triadFilter=type;
+  document.querySelectorAll('.tf').forEach(b=>b.classList.remove('active'));btn.classList.add('active');
+  renderTriads();
+}
+// Build all 36 triads (12 major, 12 minor, 12 diminished) from the music theory engine
+function buildTriadData(){
+  const useFlatRoots={'C#':1,'D#':1,'F#':1,'G#':1,'A#':1}; // default sharp display, matches rest of app
+  const types=[
+    {key:'major',label:'Major Chords',sym:'',third:4,fifth:7,thirdCls:'third-maj',thirdLbl:'M3',fifthCls:'fifth-p',fifthLbl:'P5'},
+    {key:'minor',label:'Minor Chords',sym:'m',third:3,fifth:7,thirdCls:'third-min',thirdLbl:'m3',fifthCls:'fifth-p',fifthLbl:'P5'},
+    {key:'dim',label:'Diminished Chords',sym:'°',third:3,fifth:6,thirdCls:'third-min',thirdLbl:'m3',fifthCls:'fifth-dim',fifthLbl:'b5'},
+  ];
+  return types.map(t=>({
+    label:t.label,type:t.key,
+    chords:NOTES.map(root=>{
+      const ri=NOTES.indexOf(root);
+      const rootN=dn(root,false);
+      const thirdN=dn(NOTES[(ri+t.third)%12],false);
+      const fifthN=dn(NOTES[(ri+t.fifth)%12],false);
+      return{name:rootN+t.sym,root:rootN,third:thirdN,fifth:fifthN,
+        thirdCls:t.thirdCls,thirdLbl:t.thirdLbl,fifthCls:t.fifthCls,fifthLbl:t.fifthLbl,type:t.key};
+    })
+  }));
+}
+function renderTriads(){
+  const wrap=document.getElementById('triadsWrap');
+  const groups=buildTriadData();
+  const filtered=triadFilter==='all'?groups:groups.filter(g=>g.type===triadFilter);
+  let html='';
+  filtered.forEach(g=>{
+    html+=`<div class="triad-section-title">${g.label}</div>`;
+    g.chords.forEach(c=>{
+      html+=`<div class="triad-row" onclick="openChordModal('${c.root}${c.type==='minor'?'m':c.type==='dim'?'dim':''}')">
+        <div class="tr-name"><div class="trn-main">${c.name}</div><div class="trn-sym">${c.type==='dim'?'dim':c.type}</div></div>
+        <div class="tr-notes">
+          <div class="tr-note root">${c.root}<span class="trl">Root</span></div>
+          <div class="tr-note ${c.thirdCls}">${c.third}<span class="trl">${c.thirdLbl}</span></div>
+          <div class="tr-note ${c.fifthCls}">${c.fifth}<span class="trl">${c.fifthLbl}</span></div>
+        </div>
+      </div>`;
+    });
+  });
+  wrap.innerHTML=html;
+}
+
+// ═══ CIRCLE OF FIFTHS ═══
+// Order around the circle starting at C, moving clockwise by perfect 5ths
+const COF_MAJORS=[
+  {name:'C',sharps:0,flats:0,relMin:'Am'},
+  {name:'G',sharps:1,flats:0,relMin:'Em'},
+  {name:'D',sharps:2,flats:0,relMin:'Bm'},
+  {name:'A',sharps:3,flats:0,relMin:'F#m'},
+  {name:'E',sharps:4,flats:0,relMin:'C#m'},
+  {name:'B',sharps:5,flats:0,relMin:'G#m'},
+  {name:'F#',sharps:6,flats:0,relMin:'D#m'},
+  {name:'Db',sharps:0,flats:5,relMin:'Bbm'},
+  {name:'Ab',sharps:0,flats:4,relMin:'Fm'},
+  {name:'Eb',sharps:0,flats:3,relMin:'Cm'},
+  {name:'Bb',sharps:0,flats:2,relMin:'Gm'},
+  {name:'F',sharps:0,flats:1,relMin:'Dm'},
+];
+const COF_ACCIDENTAL_ORDER_SHARP=['F#','C#','G#','D#','A#','E#'];
+const COF_ACCIDENTAL_ORDER_FLAT=['Bb','Eb','Ab','Db','Gb','Cb'];
+// Notes of the major scale for each key (for display in the info card)
+function majorScaleNotes(keyName){
+  const sharpMap={'C':0,'G':7,'D':2,'A':9,'E':4,'B':11,'F#':6};
+  const flatRoots={'Db':'Db','Ab':'Ab','Eb':'Eb','Bb':'Bb','F':'F'};
+  const FLAT_NOTES=['C','Db','D','Eb','E','F','Gb','G','Ab','A','Bb','B'];
+  const SHARP_NOTES=NOTES;
+  const useFlats=keyName in flatRoots;
+  const chrom=useFlats?FLAT_NOTES:SHARP_NOTES;
+  const rootIdx=chrom.indexOf(keyName);
+  const ints=[0,2,4,5,7,9,11];
+  return ints.map(i=>chrom[(rootIdx+i)%12]);
+}
+let cofSelected='C';
+function buildCircleOfFifths(){
+  const holder=document.getElementById('cofSvgHolder');
+  const size=320,cx=size/2,cy=size/2,rOuter=148,rOuterIn=96,rInner=94,rInnerIn=46;
+  const segAngle=360/12,startOffset=-90-segAngle/2; // C centered at top
+  function polar(r,angleDeg){
+    const a=(angleDeg)*Math.PI/180;
+    return[cx+r*Math.cos(a),cy+r*Math.sin(a)];
+  }
+  function arcPath(rO,rI,a0,a1){
+    const[x0,y0]=polar(rO,a0),[x1,y1]=polar(rO,a1);
+    const[x2,y2]=polar(rI,a1),[x3,y3]=polar(rI,a0);
+    const large=(a1-a0)%360>180?1:0;
+    return`M${x0},${y0} A${rO},${rO} 0 ${large} 1 ${x1},${y1} L${x2},${y2} A${rI},${rI} 0 ${large} 0 ${x3},${y3} Z`;
+  }
+  let svg=`<svg viewBox="0 0 ${size} ${size}" width="100%">`;
+  COF_MAJORS.forEach((k,i)=>{
+    const a0=startOffset+i*segAngle,a1=a0+segAngle,mid=a0+segAngle/2;
+    const isSel=k.name===cofSelected;
+    const outerPath=arcPath(rOuter,rOuterIn,a0,a1);
+    const[tx,ty]=polar((rOuter+rOuterIn)/2,mid);
+    svg+=`<g class="cof-seg" onclick="selectCofKey('${k.name}')">
+      <path class="cof-seg-bg" d="${outerPath}" fill="${isSel?'#f0c040':'#1c1c22'}" stroke="#0a0a0c" stroke-width="2"/>
+      <text x="${tx}" y="${ty}" text-anchor="middle" dominant-baseline="middle" font-family="Bebas Neue,sans-serif" font-size="17" fill="${isSel?'#0a0a0c':'#efefef'}">${k.name}</text>
+    </g>`;
+  });
+  COF_MAJORS.forEach((k,i)=>{
+    const a0=startOffset+i*segAngle,a1=a0+segAngle,mid=a0+segAngle/2;
+    const isSel=k.relMin===cofSelected;
+    const innerPath=arcPath(rInner,rInnerIn,a0,a1);
+    const[tx,ty]=polar((rInner+rInnerIn)/2,mid);
+    svg+=`<g class="cof-seg" onclick="selectCofKey('${k.relMin}')">
+      <path class="cof-seg-bg" d="${innerPath}" fill="${isSel?'#4ab0f0':'#141418'}" stroke="#0a0a0c" stroke-width="2"/>
+      <text x="${tx}" y="${ty}" text-anchor="middle" dominant-baseline="middle" font-family="Outfit,sans-serif" font-weight="600" font-size="12" fill="${isSel?'#0a0a0c':'#9090a8'}">${k.relMin}</text>
+    </g>`;
+  });
+  svg+=`<circle cx="${cx}" cy="${cy}" r="${rInnerIn-4}" fill="#0a0a0c" stroke="#252530" stroke-width="1"/>
+    <text x="${cx}" y="${cy-6}" text-anchor="middle" font-family="Bebas Neue,sans-serif" font-size="13" fill="#787890" letter-spacing="1">CIRCLE OF</text>
+    <text x="${cx}" y="${cy+12}" text-anchor="middle" font-family="Bebas Neue,sans-serif" font-size="13" fill="#787890" letter-spacing="1">FIFTHS</text>`;
+  svg+='</svg>';
+  holder.innerHTML=svg;
+}
+function selectCofKey(name){
+  cofSelected=name;
+  buildCircleOfFifths();
+  renderCofInfo(name);
+}
+function renderCofInfo(name){
+  const isMinor=name.endsWith('m');
+  const major=isMinor?COF_MAJORS.find(k=>k.relMin===name):COF_MAJORS.find(k=>k.name===name);
+  if(!major)return;
+  const count=major.sharps>0?major.sharps:major.flats;
+  const accType=major.sharps>0?'sharp':major.flats>0?'flat':'none';
+  const accList=accType==='sharp'?COF_ACCIDENTAL_ORDER_SHARP.slice(0,count):accType==='flat'?COF_ACCIDENTAL_ORDER_FLAT.slice(0,count):[];
+  const sigText=count===0?'No sharps or flats':`${count} ${accType}${count>1?'s':''}: ${accList.join(', ')}`;
+  const majScale=majorScaleNotes(major.name);
+  // Natural minor = relative major's scale starting on the 6th degree
+  const minScale=majScale.slice(5).concat(majScale.slice(0,5));
+  const scale=isMinor?minScale:majScale;
+  const displayName=isMinor?major.relMin.replace(/m$/,''):major.name;
+  const displayLabel=isMinor?'minor':'major';
+  document.getElementById('cofInfoCard').innerHTML=`
+    <div class="cof-info-name">${displayName} ${displayLabel}</div>
+    <div class="cof-info-sig">${sigText}</div>
+    <div class="cof-info-notes">${scale.map(n=>`<span class="cof-note-pill${accList.includes(n)?' acc':''}">${n}</span>`).join('')}</div>
+    <div class="cof-info-rel">${isMinor?'Relative major: ':'Relative minor: '}<span>${isMinor?major.name:major.relMin}</span></div>
+    <button class="btn-ghost cof-go" onclick="goToKeyInSongwriter('${isMinor?major.relMin:major.name}')">VIEW IN KEY CHEAT SHEET</button>
+  `;
+}
+function goToKeyInSongwriter(keyId){
+  const exists=SONG_KEYS.find(k=>k.id===keyId);
+  if(!exists){
+    document.getElementById('cofInfoCard').insertAdjacentHTML('beforeend',
+      `<div style="font-size:12px;color:var(--muted);margin-top:8px;">This key isn't in the Key Cheat Sheet yet — it's a less common key on guitar. Try its enharmonic equivalent or a neighbouring key on the circle.</div>`);
+    return;
+  }
+  showTab('song');
+  selectKey(keyId);
+}
+function initCof(){
+  buildCircleOfFifths();
+  renderCofInfo('C');
+}
+
+function renderBarreNavigator(){
+  const wrap=document.getElementById('chordsWrap');
+  const allNotes=['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+  const displayNote=(n)=>({'C#':'C#','D#':'D#','F#':'F#','G#':'G#','A#':'A#'}[n]||n);
+
+  let html=`<div style="padding:4px 0 16px">
+    <div style="font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:10px;">SELECT ROOT NOTE</div>
+    <div class="bn-root-grid">
+      ${allNotes.map(n=>`<div class="bn-root-btn${bnRoot===n?' active':''}" onclick="bnSelectRoot('${n}')">${displayNote(n)}</div>`).join('')}
+    </div>
+    <div style="font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:10px;">CHORD TYPE</div>
+    <div class="bn-quality-row">
+      <div class="bn-q${bnQuality==='major'?' active':''}" onclick="bnSelectQuality('major')">Major</div>
+      <div class="bn-q${bnQuality==='minor'?' active':''}" onclick="bnSelectQuality('minor')">Minor</div>
+      <div class="bn-q${bnQuality==='7'?' active':''}" onclick="bnSelectQuality('7')">Dom 7th</div>
+      <div class="bn-q${bnQuality==='m7'?' active':''}" onclick="bnSelectQuality('m7')">Min 7th</div>
+    </div>
+    ${bnRoot ? renderBarreResult() : '<div class="bn-placeholder">Select a root note above to see where to play it</div>'}
+  </div>`;
+  wrap.innerHTML=html;
+}
+
+function bnSelectRoot(n){bnRoot=n;renderBarreNavigator();}
+function bnSelectQuality(q){bnQuality=q;renderBarreNavigator();}
+
+function renderBarreResult(){
+  const n=bnRoot;
+  const q=bnQuality;
+  const displayN={'C#':'C#/Db','D#':'D#/Eb','F#':'F#/Gb','G#':'G#/Ab','A#':'A#/Bb'}[n]||n;
+  const qualLabel={'major':'Major','minor':'Minor','7':'Dominant 7th','m7':'Minor 7th'}[q];
+  const chordName=displayN+(q==='minor'||q==='m7'?'m':'')+(q==='7'?'7':q==='m7'?'7':'');
+
+  // E shape: root on low E string
+  const eFret=getEStringFret(n);
+  // A shape: root on A string
+  const aFret=getAStringFret(n);
+
+  // Build fret arrays for each shape
+  // E shape major: R x x R+1 R+1 R  (relative: 0,2,2,1,0,0 = E major shape)
+  // E shape minor: R x x R R R (relative: 0,2,2,0,0,0 = Em shape)
+  // A shape major: x R R+2 R+2 R+2 R (relative: x,0,2,2,2,0)
+  // A shape minor: x R R+2 R+1 R R (relative: x,0,2,2,1,0)
+
+  function eShapeFrets(rootFret, shape){
+    if(rootFret===0){
+      // open position
+      if(shape==='major') return {frets:[0,2,2,1,0,0],fingers:[0,3,4,2,0,0],startFret:1,label:`Open E shape`,tip:'Open position — no barre needed'};
+      if(shape==='minor') return {frets:[0,2,2,0,0,0],fingers:[0,2,3,0,0,0],startFret:1,label:'Open Em shape',tip:'Open position — no barre needed'};
+    }
+    const sf=rootFret;
+    if(shape==='major') return {frets:[sf,sf+2,sf+2,sf+1,sf,sf],fingers:['B',3,4,2,'B','B'],startFret:sf,barre:{fret:sf,from:0,to:5},label:`E shape (fret ${sf})`,tip:`Barre all strings at fret ${sf}. Root is on the low E string.`};
+    if(shape==='minor') return {frets:[sf,sf+2,sf+2,sf,sf,sf],fingers:['B',3,4,'B','B','B'],startFret:sf,barre:{fret:sf,from:0,to:5},label:`Em shape (fret ${sf})`,tip:`Barre all strings at fret ${sf}. Root is on the low E string.`};
+    if(shape==='7') return {frets:[sf,sf+2,sf,sf+1,sf,sf],fingers:['B',3,'B',2,'B','B'],startFret:sf,barre:{fret:sf,from:0,to:5},label:`E7 shape (fret ${sf})`,tip:`Dominant 7th barre. Root on low E string fret ${sf}.`};
+    if(shape==='m7') return {frets:[sf,sf+2,sf,sf,sf,sf],fingers:['B',3,'B','B','B','B'],startFret:sf,barre:{fret:sf,from:0,to:5},label:`Em7 shape (fret ${sf})`,tip:`Minor 7th barre. Root on low E string fret ${sf}.`};
+  }
+
+  function aShapeFrets(rootFret, shape){
+    if(rootFret===0){
+      if(shape==='major') return {frets:[null,0,2,2,2,0],fingers:[null,0,2,3,4,0],startFret:1,label:'Open A shape',tip:'Open position — no barre needed'};
+      if(shape==='minor') return {frets:[null,0,2,2,1,0],fingers:[null,0,3,2,1,0],startFret:1,label:'Open Am shape',tip:'Open position — no barre needed'};
+    }
+    const sf=rootFret;
+    if(shape==='major') return {frets:[null,sf,sf+2,sf+2,sf+2,sf],fingers:[null,'B',3,4,2,'B'],startFret:sf,barre:{fret:sf,from:1,to:5},label:`A shape (fret ${sf})`,tip:`Barre from A string at fret ${sf}. Root is on the A string.`};
+    if(shape==='minor') return {frets:[null,sf,sf+2,sf+2,sf+1,sf],fingers:[null,'B',3,4,2,'B'],startFret:sf,barre:{fret:sf,from:1,to:5},label:`Am shape (fret ${sf})`,tip:`Minor barre from A string at fret ${sf}. Root on the A string.`};
+    if(shape==='7') return {frets:[null,sf,sf+2,sf,sf+2,sf],fingers:[null,'B',3,'B',2,'B'],startFret:sf,barre:{fret:sf,from:1,to:5},label:`A7 shape (fret ${sf})`,tip:`Dominant 7th from A string fret ${sf}.`};
+    if(shape==='m7') return {frets:[null,sf,sf+2,sf,sf+1,sf],fingers:[null,'B',3,'B',2,'B'],startFret:sf,barre:{fret:sf,from:1,to:5},label:`Am7 shape (fret ${sf})`,tip:`Minor 7th from A string fret ${sf}.`};
+  }
+
+  const eVar=eShapeFrets(eFret,q);
+  const aVar=aShapeFrets(aFret,q);
+
+  // Also offer higher E shape if low fret is awkward (e.g. fret 1)
+  const eHighFret=eFret+12<=19?eFret+12:null;
+  const eHighVar=eHighFret?eShapeFrets(eHighFret,q):null;
+
+  const easyNote = aFret<=4 ? `The A shape at fret ${aFret} is easiest — low on the neck.`
+    : eFret<=4 ? `The E shape at fret ${eFret} is easy — low on the neck.`
+    : `Both shapes are mid-neck. The A shape at fret ${aFret} gives a slightly warmer tone.`;
+
+  let html=`
+    <div class="bn-result">
+      <div class="bn-result-title">${chordName}</div>
+      <div class="bn-result-sub">Two ways to play this chord anywhere on the neck. Tap either shape to see it full size.</div>
+      <div class="bn-diagrams">
+        <div class="bn-diag">
+          <div class="bn-diag-label">${eVar.label}</div>
+          <div onclick="openBarreDetail('e','${n}','${q}')" style="cursor:pointer">${drawChordSVG(eVar,155,165,false)}</div>
+          <div class="bn-fret-tag">Root: Low E string</div>
+        </div>
+        <div class="bn-diag">
+          <div class="bn-diag-label">${aVar.label}</div>
+          <div onclick="openBarreDetail('a','${n}','${q}')" style="cursor:pointer">${drawChordSVG(aVar,155,165,false)}</div>
+          <div class="bn-fret-tag">Root: A string</div>
+        </div>
+      </div>
+      <div class="bn-tip"><strong>💡 Easiest option:</strong> ${easyNote}<br><strong>E string fret:</strong> ${eFret===0?'Open':eFret} &nbsp;·&nbsp; <strong>A string fret:</strong> ${aFret===0?'Open':aFret}</div>
+    </div>
+    <div class="card2" style="font-size:13px;color:var(--muted);line-height:1.6;margin-top:4px;">
+      <strong style="color:var(--text);">How barre chords work:</strong> You're playing the same open chord shape but moved up the neck, with your index finger replacing the nut. The shape stays identical — only the fret changes. Once you learn the E and A shapes, you can play <em>any</em> major or minor chord anywhere on the guitar.
+    </div>`;
+  return html;
+}
+
+function openBarreDetail(shape, note, quality){
+  // Just reuse the chord modal to show a bigger version
+  const displayN={'C#':'C#/Db','D#':'D#/Eb','F#':'F#/Gb','G#':'G#/Ab','A#':'A#/Bb'}[note]||note;
+  const qualLabel={'major':'Major','minor':'Minor','7':'Dominant 7th','m7':'Minor 7th'}[quality];
+  const chordName=displayN+(quality==='minor'||quality==='m7'?'m':'')+(quality==='7'?'7':quality==='m7'?'7':'');
+
+  function eShapeFrets(rootFret,sh){
+    if(rootFret===0){
+      if(sh==='major')return{frets:[0,2,2,1,0,0],fingers:[0,3,4,2,0,0],startFret:1,label:'Open E shape'};
+      if(sh==='minor')return{frets:[0,2,2,0,0,0],fingers:[0,2,3,0,0,0],startFret:1,label:'Open Em shape'};
+    }
+    const sf=rootFret;
+    if(sh==='major')return{frets:[sf,sf+2,sf+2,sf+1,sf,sf],fingers:['B',3,4,2,'B','B'],startFret:sf,barre:{fret:sf,from:0,to:5},label:`E shape fret ${sf}`};
+    if(sh==='minor')return{frets:[sf,sf+2,sf+2,sf,sf,sf],fingers:['B',3,4,'B','B','B'],startFret:sf,barre:{fret:sf,from:0,to:5},label:`Em shape fret ${sf}`};
+    if(sh==='7')return{frets:[sf,sf+2,sf,sf+1,sf,sf],fingers:['B',3,'B',2,'B','B'],startFret:sf,barre:{fret:sf,from:0,to:5},label:`E7 shape fret ${sf}`};
+    if(sh==='m7')return{frets:[sf,sf+2,sf,sf,sf,sf],fingers:['B',3,'B','B','B','B'],startFret:sf,barre:{fret:sf,from:0,to:5},label:`Em7 shape fret ${sf}`};
+  }
+  function aShapeFrets(rootFret,sh){
+    if(rootFret===0){
+      if(sh==='major')return{frets:[null,0,2,2,2,0],fingers:[null,0,2,3,4,0],startFret:1,label:'Open A shape'};
+      if(sh==='minor')return{frets:[null,0,2,2,1,0],fingers:[null,0,3,2,1,0],startFret:1,label:'Open Am shape'};
+    }
+    const sf=rootFret;
+    if(sh==='major')return{frets:[null,sf,sf+2,sf+2,sf+2,sf],fingers:[null,'B',3,4,2,'B'],startFret:sf,barre:{fret:sf,from:1,to:5},label:`A shape fret ${sf}`};
+    if(sh==='minor')return{frets:[null,sf,sf+2,sf+2,sf+1,sf],fingers:[null,'B',3,4,2,'B'],startFret:sf,barre:{fret:sf,from:1,to:5},label:`Am shape fret ${sf}`};
+    if(sh==='7')return{frets:[null,sf,sf+2,sf,sf+2,sf],fingers:[null,'B',3,'B',2,'B'],startFret:sf,barre:{fret:sf,from:1,to:5},label:`A7 shape fret ${sf}`};
+    if(sh==='m7')return{frets:[null,sf,sf+2,sf,sf+1,sf],fingers:[null,'B',3,'B',2,'B'],startFret:sf,barre:{fret:sf,from:1,to:5},label:`Am7 shape fret ${sf}`};
+  }
+
+  const eFret=getEStringFret(note);
+  const aFret=getAStringFret(note);
+  const eVar=eShapeFrets(eFret,quality);
+  const aVar=aShapeFrets(aFret,quality);
+  const chosen=shape==='e'?eVar:aVar;
+  const other=shape==='e'?aVar:eVar;
+  const otherLabel=shape==='e'?'A string shape':'E string shape';
+
+  document.getElementById('chordModalContent').innerHTML=`
+    <div class="cm-handle"></div>
+    <div class="cm-name">${chordName}</div>
+    <div class="cm-desc">${chosen.label} — ${shape==='e'?'root on low E string':'root on A string'}</div>
+    <div style="display:flex;gap:16px;flex-wrap:wrap;justify-content:center;margin:16px 0;">
+      <div style="text-align:center">
+        <div style="font-size:12px;color:var(--gold);margin-bottom:6px;">${chosen.label}</div>
+        ${drawChordSVG(chosen,180,190,false)}
+      </div>
+      <div style="text-align:center">
+        <div style="font-size:12px;color:var(--muted);margin-bottom:6px;">${otherLabel}: ${other.label}</div>
+        ${drawChordSVG(other,180,190,false)}
+      </div>
+    </div>
+    <button class="btn-ghost" style="margin-top:4px" onclick="closeChordModal()">CLOSE</button>`;
+  document.getElementById('chordModal').classList.add('show');
+}
+function renderChords(){
+  const wrap=document.getElementById('chordsWrap');
+  if(chordFilter==='navigator'){renderBarreNavigator();return;}
+  const filtered=chordFilter==='all'?CHORDS:CHORDS.filter(c=>c.category===chordFilter);
+  const groups={};filtered.forEach(c=>{if(!groups[c.category])groups[c.category]=[];groups[c.category].push(c);});
+  const catNames={major:'Major Chords',minor:'Minor Chords','7th':'7th Chords',barre:'Barre Chords',sus:'Sus & Add Chords'};
+  const catOrder=['major','minor','7th','barre','sus'];
+  let html='';
+  catOrder.forEach(cat=>{
+    if(!groups[cat])return;
+    html+=`<div class="chord-section-title">${catNames[cat]}</div><div class="chords-grid">`;
+    groups[cat].forEach(chord=>{
+      const svg=drawChordSVG(chord.variations[0],100,110,true);
+      html+=`<div class="chord-card" onclick="openChordModal('${chord.id}')"><div class="chord-card-name">${chord.name}</div>${svg}</div>`;
+    });
+    html+='</div>';
+  });
+  wrap.innerHTML=html;
+}
+function openChordModal(id){
+  // Try to find in chord library first
+  let found=CHORDS.find(c=>c.id===id);
+  if(!found){
+    const baseId=id.replace('dim','').replace('m','');
+    found=CHORDS.find(c=>c.id===id+'m')||CHORDS.find(c=>c.id===baseId+'m')||CHORDS.find(c=>c.id===baseId);
+  }
+
+  // If still not found, route to barre navigator
+  if(!found){
+    const rootNote=id.replace('dim','').replace('m','');
+    const isMinor=id.endsWith('m')&&!id.endsWith('dim');
+    const noteInList=NOTE_ORDER.includes(rootNote);
+    if(noteInList){
+      bnRoot=rootNote;
+      bnQuality=isMinor?'minor':'major';
+      filterChords('navigator',document.querySelectorAll('.cf')[6]);
+      showScreen('sc-chord-ref');
+      return;
+    }
+    document.getElementById('chordModal').classList.add('show');
+    document.getElementById('chordModalContent').innerHTML=`<div class="cm-handle"></div><div class="cm-name">${id}</div><p style="color:var(--muted);font-size:13px;margin-top:8px;">Use the 🔍 Any Chord navigator to find the fingering for this chord.</p><button class="btn-ghost" style="margin-top:16px" onclick="closeChordModal()">CLOSE</button>`;
+    return;
+  }
+  const svgs=found.variations.map(v=>`<div class="var-card"><div class="var-label">${v.label}</div>${drawChordSVG(v,160,170,false)}</div>`).join('');
+  document.getElementById('chordModalContent').innerHTML=`
+    <div class="cm-handle"></div>
+    <div class="cm-name">${found.name}</div>
+    <div class="cm-desc">${found.desc}</div>
+    <div class="cm-tip"><strong>Tip:</strong> ${found.tip}</div>
+    <div style="font-family:'Bebas Neue',sans-serif;font-size:14px;letter-spacing:1px;color:var(--muted);margin-bottom:12px;">FINGERING</div>
+    <div class="variations-grid">${svgs}</div>
+    <button class="btn-ghost" style="margin-top:20px" onclick="closeChordModal()">CLOSE</button>`;
+  document.getElementById('chordModal').classList.add('show');
+}
+function closeChordModal(e){if(!e||e.target===document.getElementById('chordModal')){document.getElementById('chordModal').classList.remove('show');}}
+function drawChordSVG(variation,width,height,small){
+  const{frets,fingers,startFret,barre}=variation;
+  const strings=6,fretCount=4;
+  const padL=small?16:26,padT=small?20:28,padB=small?10:18,padR=small?6:14;
+  const W=width-padL-padR,H=height-padT-padB;
+  const sS=W/(strings-1),fS=H/fretCount;
+  const dR=small?8:12,fSize=small?7:10,lSize=small?8:11;
+  let svg=`<svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">`;
+  if(startFret===1){svg+=`<rect x="${padL}" y="${padT}" width="${W}" height="4" fill="#ccc" rx="1"/>`;}
+  else{svg+=`<text x="${padL-4}" y="${padT+fS*0.6}" text-anchor="end" font-size="${lSize}" fill="#888" font-family="Outfit,sans-serif">${startFret}fr</text>`;}
+  for(let f=0;f<=fretCount;f++){const y=padT+(startFret===1?4:0)+f*fS;svg+=`<line x1="${padL}" y1="${y}" x2="${padL+W}" y2="${y}" stroke="#333" stroke-width="1"/>`;}
+  for(let s=0;s<strings;s++){const x=padL+s*sS;svg+=`<line x1="${x}" y1="${padT+(startFret===1?4:0)}" x2="${x}" y2="${padT+(startFret===1?4:0)+fretCount*fS}" stroke="#555" stroke-width="${1+(5-s)*0.2}"/>`;}
+  if(barre){const bF=barre.fret-startFret+1,y=padT+(startFret===1?4:0)+(bF-0.5)*fS,x1=padL+barre.from*sS,x2=padL+barre.to*sS;
+    svg+=`<rect x="${x1}" y="${y-dR*0.85}" width="${x2-x1}" height="${dR*1.7}" rx="${dR}" fill="${FINGER_COLORS['B']}"/>`;}
+  frets.forEach((fret,sIdx)=>{
+    const x=padL+sIdx*sS;
+    if(fret===null){svg+=`<text x="${x}" y="${padT-10}" text-anchor="middle" font-size="${lSize}" fill="#888" font-family="Outfit,sans-serif">✕</text>`;}
+    else if(fret===0){svg+=`<circle cx="${x}" cy="${padT-10}" r="${dR*0.55}" fill="none" stroke="#666" stroke-width="1.5"/>`;}
+    else{const finger=fingers?fingers[sIdx]:null;if(finger==='B'||finger===0)return;
+      const rF=fret-startFret+1,y=padT+(startFret===1?4:0)+(rF-0.5)*fS;
+      const color=finger?FINGER_COLORS[finger]||'#444':'#444';
+      svg+=`<circle cx="${x}" cy="${y}" r="${dR}" fill="${color}"/>`;
+      if(finger&&!small)svg+=`<text x="${x}" y="${y+fSize*0.38}" text-anchor="middle" font-size="${fSize}" fill="#fff" font-weight="700" font-family="Outfit,sans-serif">${finger}</text>`;}
+  });
+  ['E','A','D','G','B','e'].forEach((n,s)=>{const x=padL+s*sS,y=padT+(startFret===1?4:0)+fretCount*fS+11;svg+=`<text x="${x}" y="${y}" text-anchor="middle" font-size="${lSize-1}" fill="#777" font-family="Outfit,sans-serif">${n}</text>`;});
+  return svg+'</svg>';
+}
+
+// ═══ SCALE BOX SHAPES ═══
+// Each scale has 5 positions. Each position is defined as:
+// frets: array of 6 strings, each an array of fret offsets from startFret that are in the scale
+// fingers: suggested finger for each dot
+// startFret: absolute fret (calculated from root)
+// desc: position description
+
+// Intervals from root (semitones) for each scale type
+const SCALE_INTERVALS = {
+  minorPent: [0,3,5,7,10],           // minor pentatonic
+  pentatonic: [0,2,4,7,9],           // major pentatonic
+  blues:      [0,3,5,6,7,10],        // blues scale
+  natural:    [0,2,4,5,7,9,11],      // major scale
+  minorNat:   [0,2,3,5,7,8,10],      // natural minor
+};
+
+// Box shapes as fret offsets relative to position start fret
+// [string0(lowE), string1(A), string2(D), string3(G), string4(B), string5(highE)]
+// Each entry is array of fret offsets on that string within the box
+const BOX_SHAPES = {
+  minorPent: [
+    {name:'Box 1 (Root)',offsets:[[0,3],[0,2],[0,2],[0,2],[0,3],[0,3]],rootStrings:[0,5],rootOffset:0},
+    {name:'Box 2',offsets:[[2,5],[2,5],[2,4],[2,4],[3,5],[2,5]],rootStrings:[],rootOffset:2},
+    {name:'Box 3',offsets:[[5,7],[5,7],[4,7],[4,6],[5,7],[5,7]],rootStrings:[],rootOffset:5},
+    {name:'Box 4',offsets:[[7,10],[7,9],[7,9],[7,9],[7,10],[7,10]],rootStrings:[],rootOffset:7},
+    {name:'Box 5',offsets:[[9,12],[9,12],[9,11],[9,12],[10,12],[9,12]],rootStrings:[],rootOffset:9},
+  ],
+  pentatonic: [
+    {name:'Box 1 (Root)',offsets:[[0,2],[0,2],[0,1],[0,2],[0,2],[0,2]],rootStrings:[0,5],rootOffset:0},
+    {name:'Box 2',offsets:[[2,4],[2,4],[1,4],[2,4],[2,4],[2,4]],rootStrings:[],rootOffset:2},
+    {name:'Box 3',offsets:[[4,7],[4,6],[4,6],[4,6],[4,7],[4,7]],rootStrings:[],rootOffset:4},
+    {name:'Box 4',offsets:[[7,9],[6,9],[6,9],[6,7],[7,9],[7,9]],rootStrings:[],rootOffset:7},
+    {name:'Box 5',offsets:[[9,12],[9,11],[9,11],[9,11],[9,12],[9,12]],rootStrings:[],rootOffset:9},
+  ],
+  blues: [
+    {name:'Box 1 (Root)',offsets:[[0,3],[0,2],[0,1,2],[0,2],[0,3],[0,3]],rootStrings:[0,5],rootOffset:0},
+    {name:'Box 2',offsets:[[2,5],[2,4,5],[2,4],[2,4],[3,5],[2,5]],rootStrings:[],rootOffset:2},
+    {name:'Box 3',offsets:[[5,6,7],[5,7],[4,6,7],[4,6],[5,7],[5,6,7]],rootStrings:[],rootOffset:5},
+    {name:'Box 4',offsets:[[7,9,10],[7,9],[7,8,9],[7,9],[7,9,10],[7,9,10]],rootStrings:[],rootOffset:7},
+    {name:'Box 5',offsets:[[9,12],[9,11,12],[9,11],[9,11,12],[10,12],[9,12]],rootStrings:[],rootOffset:9},
+  ],
+  natural: [
+    {name:'Position 1 (Root)',offsets:[[0,2],[0,2],[0,2],[0,1],[0,2],[0,2]],rootStrings:[0,5],rootOffset:0},
+    {name:'Position 2',offsets:[[2,4],[2,4],[2,4],[1,3],[2,3],[2,4]],rootStrings:[],rootOffset:2},
+    {name:'Position 3',offsets:[[4,5],[4,5],[4,5],[3,5],[3,5],[4,5]],rootStrings:[],rootOffset:4},
+    {name:'Position 4',offsets:[[5,7],[5,7],[5,7],[5,6],[5,7],[5,7]],rootStrings:[],rootOffset:5},
+    {name:'Position 5',offsets:[[7,9],[7,9],[7,9],[6,8],[7,8],[7,9]],rootStrings:[],rootOffset:7},
+  ],
+  minorNat: [
+    {name:'Position 1 (Root)',offsets:[[0,2],[0,2],[0,1],[0,2],[0,1],[0,2]],rootStrings:[0,5],rootOffset:0},
+    {name:'Position 2',offsets:[[2,3],[2,3],[1,3],[2,3],[1,3],[2,3]],rootStrings:[],rootOffset:2},
+    {name:'Position 3',offsets:[[3,5],[3,5],[3,5],[3,5],[3,5],[3,5]],rootStrings:[],rootOffset:3},
+    {name:'Position 4',offsets:[[5,7],[5,7],[5,6],[5,7],[5,6],[5,7]],rootStrings:[],rootOffset:5},
+    {name:'Position 5',offsets:[[7,8],[7,8],[6,8],[7,8],[6,8],[7,8]],rootStrings:[],rootOffset:7},
+  ],
+};
+
+// Map SCALE_INFO keys to BOX_SHAPES keys
+const SCALE_KEY_MAP = {
+  pentatonic: {major:'pentatonic', minor:'minorPent'},
+  minorPent:  {major:'minorPent',  minor:'minorPent'},
+  blues:      {major:'blues',      minor:'blues'},
+  natural:    {major:'natural',    minor:'minorNat'},
+};
+
+let scaleModalState = {scaleKey:null, keyId:null, pos:0};
+
+function openScaleModal(scaleKey, keyId){
+  scaleModalState = {scaleKey, keyId, pos:0};
+  renderScaleModal();
+  document.getElementById('scaleModal').classList.add('show');
+}
+
+function closeScaleModal(e){
+  if(!e||e.target===document.getElementById('scaleModal'))
+    document.getElementById('scaleModal').classList.remove('show');
+}
+
+function scaleModalNav(dir){
+  const shapes = getScaleShapes();
+  scaleModalState.pos = Math.max(0, Math.min(shapes.length-1, scaleModalState.pos+dir));
+  renderScaleModal();
+}
+
+function scaleModalGoto(pos){
+  scaleModalState.pos = pos;
+  renderScaleModal();
+}
+
+function getScaleShapes(){
+  const {scaleKey, keyId} = scaleModalState;
+  const key = SONG_KEYS.find(k=>k.id===keyId);
+  const shapeKey = SCALE_KEY_MAP[scaleKey]?.[key.type] || scaleKey;
+  return BOX_SHAPES[shapeKey] || BOX_SHAPES.minorPent;
+}
+
+function getRootFret(keyId){
+  const key = SONG_KEYS.find(k=>k.id===keyId);
+  const rootIdx = NOTES.indexOf(NOTES[key.root]);
+  // Root on low E string: E=open(0), so fret = rootIdx - 4, adjusted
+  let fret = (key.root - 4 + 12) % 12;
+  if(fret === 0) return 0;
+  return fret;
+}
+
+function renderScaleModal(){
+  const {scaleKey, keyId, pos} = scaleModalState;
+  const key = SONG_KEYS.find(k=>k.id===keyId);
+  const scales = SCALE_INFO[key.type];
+  const scale = scales[scaleKey];
+  const shapes = getScaleShapes();
+  const shape = shapes[pos];
+  const rootFret = getRootFret(keyId);
+
+  // Calculate absolute start fret for this position
+  let absFret = (rootFret + shape.rootOffset) % 12;
+  if(absFret === 0) absFret = 12; // avoid open position for clarity
+  if(absFret < 1) absFret = 1;
+
+  const svg = drawScaleBox(shape, absFret);
+  const dotsHtml = shapes.map((_,i)=>
+    `<div class="sm-dot-nav${i===pos?' active':''}" onclick="scaleModalGoto(${i})"></div>`
+  ).join('');
+
+  const posDescriptions = [
+    'Box 1 — home position, root on low E and high e strings',
+    'Box 2 — shifts up the neck, new fingering pattern',
+    'Box 3 — mid neck, same notes different feel',
+    'Box 4 — upper mid neck position',
+    'Box 5 — connects back to Box 1 an octave up',
+  ];
+
+  document.getElementById('scaleModalContent').innerHTML = `
+    <div class="sm-handle"></div>
+    <div class="sm-name">${scale.name}</div>
+    <div class="sm-use">${scale.use}</div>
+    <div class="sm-desc">${scale.desc}</div>
+    <div class="sm-tip"><strong>💡 Tip:</strong> ${scale.tip}</div>
+    <div class="sm-pos-nav">
+      <button class="sm-nav-btn" onclick="scaleModalNav(-1)" ${pos===0?'disabled':''}>←</button>
+      <div class="sm-pos-label">${shape.name}</div>
+      <button class="sm-nav-btn" onclick="scaleModalNav(1)" ${pos===shapes.length-1?'disabled':''}>→</button>
+    </div>
+    <div class="sm-pos-sub">Starts around fret ${absFret} · ${posDescriptions[pos]||''}</div>
+    <div class="sm-diagram">${svg}</div>
+    <div class="sm-dots-row">${dotsHtml}</div>
+    <button class="btn-ghost" onclick="closeScaleModal()">CLOSE</button>
+  `;
+}
+
+function drawScaleBox(shape, startFret){
+  const strings = 6;
+  const fretSpan = 4;
+  const w = 240, h = 160;
+  const padL = 28, padR = 14, padT = 28, padB = 22;
+  const W = w - padL - padR;
+  const H = h - padT - padB;
+  const sS = W / (strings - 1);
+  const fS = H / fretSpan;
+  const dR = 10;
+  const strNames = ['E','A','D','G','B','e'];
+
+  let svg = `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">`;
+
+  // Fret numbers on left
+  for(let f = 0; f <= fretSpan; f++){
+    const y = padT + f * fS;
+    const fretNum = startFret + f;
+    svg += `<text x="${padL-6}" y="${y+4}" text-anchor="end" font-size="9" fill="#666" font-family="Outfit,sans-serif">${fretNum}</text>`;
+    svg += `<line x1="${padL}" y1="${y}" x2="${padL+W}" y2="${y}" stroke="${f===0?'#888':'#333'}" stroke-width="${f===0?2:1}"/>`;
+  }
+
+  // Strings
+  for(let s = 0; s < strings; s++){
+    const x = padL + s * sS;
+    svg += `<line x1="${x}" y1="${padT}" x2="${x}" y2="${padT+fretSpan*fS}" stroke="#555" stroke-width="${1+(5-s)*0.25}"/>`;
+    svg += `<text x="${x}" y="${padT+fretSpan*fS+14}" text-anchor="middle" font-size="9" fill="#666" font-family="Outfit,sans-serif">${strNames[s]}</text>`;
+  }
+
+  // Scale dots
+  shape.offsets.forEach((stringOffsets, sIdx) => {
+    const x = padL + sIdx * sS;
+    stringOffsets.forEach(offset => {
+      const fretInBox = offset - shape.rootOffset;
+      if(fretInBox < 0 || fretInBox > fretSpan) return;
+      const y = padT + (fretInBox - 0.5) * fS;
+      const isRoot = shape.rootStrings.includes(sIdx) && offset === shape.rootOffset;
+      const fill = isRoot ? '#f0c040' : '#4ab0f0';
+      const textCol = isRoot ? '#000' : '#fff';
+      svg += `<circle cx="${x}" cy="${y}" r="${dR}" fill="${fill}"/>`;
+      if(isRoot) svg += `<text x="${x}" y="${y+4}" text-anchor="middle" font-size="9" font-weight="700" fill="${textCol}" font-family="Outfit,sans-serif">R</text>`;
+    });
+  });
+
+  svg += '</svg>';
+  return svg;
+}
+
+
+const FB_STRINGS_GUITAR=[{name:'E',open:4},{name:'A',open:9},{name:'D',open:2},{name:'G',open:7},{name:'B',open:11},{name:'e',open:4}];
+const FB_STRINGS_BASS=[{name:'E',open:4},{name:'A',open:9},{name:'D',open:2},{name:'G',open:7}];
+const FRET_MARKERS=[3,5,7,9,12,15,17,19];
+const CHROM_SHARP=['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+const CHROM_FLAT=['C','Db','D','Eb','E','F','Gb','G','Ab','A','Bb','B'];
+
+let fbState={notation:'sharp',view:'all',highlight:null};
+let bfState={notation:'sharp',view:'all',highlight:null};
+
+function fbNote(open,fret,flat){return flat?CHROM_FLAT[(open+fret)%12]:CHROM_SHARP[(open+fret)%12];}
+function isSharpNote(n){return n.includes('#')||n.includes('b')&&n.length>1;}
+
+function buildFretboard(containerId,strings,state,frets,prefix){
+  const useFlat=state.notation==='flat';
+  const chrom=useFlat?CHROM_FLAT:CHROM_SHARP;
+  let html='';
+  // numbers
+  html+=`<div class="fb-nums"><div class="fb-nsp"></div><div class="fb-nnut"></div><div class="fb-ncells">`;
+  html+=`<div class="fn open">Open</div>`;
+  for(let f=1;f<=frets;f++)html+=`<div class="fn">${f}</div>`;
+  html+='</div></div>';
+  html+='<div class="fb-strings">';
+  strings.forEach(str=>{
+    html+=`<div class="fb-str">`;
+    html+=`<div class="fb-slbl">${str.name}</div>`;
+    html+=`<div style="width:8px;height:30px;background:#f5f0e0;border-radius:3px;margin-right:8px;flex-shrink:0;"></div>`;
+    html+=`<div class="fb-sline"><div class="fb-wire"></div><div class="fb-cells">`;
+    // open
+    const openN=fbNote(str.open,0,useFlat);
+    const openSharp=isSharpNote(openN);
+    let openCls=openSharp?'shp':'nat';
+    let openHide=false;
+    if(state.view==='naturals'&&openSharp)openHide=true;
+    if(state.view==='sharps'&&!openSharp)openHide=true;
+    if(state.highlight&&openN===state.highlight)openCls='root';
+    html+=`<div class="fb-open"><div class="ndot ${openCls}${openHide?' hidden':''}" onclick="${prefix}Highlight('${openN}')">${openN}</div></div>`;
+    for(let f=1;f<=frets;f++){
+      const n=fbNote(str.open,f,useFlat);
+      const sharp=isSharpNote(n);
+      let cls=sharp?'shp':'nat';
+      let hide=false;
+      if(state.view==='naturals'&&sharp)hide=true;
+      if(state.view==='sharps'&&!sharp)hide=true;
+      if(state.highlight&&n===state.highlight)cls='root';
+      html+=`<div class="fb-cell"><div class="ndot ${cls}${hide?' hidden':''}" onclick="${prefix}Highlight('${n}')">${n}</div></div>`;
+    }
+    html+='</div></div></div>';
+  });
+  html+='</div>';
+  // dot markers
+  html+='<div class="fb-markers">';
+  for(let f=1;f<=frets;f++){
+    const hasDot=FRET_MARKERS.includes(f);
+    const isDouble=f===12;
+    html+=`<div class="fb-mc">${hasDot?`<div class="fb-dot" style="${isDouble?'background:rgba(240,192,64,0.4)':''}"></div>`:''}`;
+    html+='</div>';
+  }
+  html+='</div>';
+  document.getElementById(containerId).innerHTML=html;
+}
+function buildNotePicker(pickerEl,state,prefix,chrom){
+  pickerEl.innerHTML=chrom.map(n=>`<button class="npbtn${state.highlight===n?' active':''}" onclick="${prefix}Highlight('${n}')">${n}</button>`).join('');
+}
+function fbView(v,btn){fbState.view=v;document.querySelectorAll('#sc-fretboard .fbtn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');rebuildGuitar();}
+function fbToggleNotation(){fbState.notation=fbState.notation==='sharp'?'flat':'sharp';document.getElementById('fbNotationBtn').textContent=fbState.notation==='sharp'?'Show ♭':'Show ♯';rebuildGuitar();}
+function fbHighlight(n){fbState.highlight=fbState.highlight===n?null:n;rebuildGuitar();}
+function rebuildGuitar(){
+  const chrom=fbState.notation==='flat'?CHROM_FLAT:CHROM_SHARP;
+  buildFretboard('guitarFB',FB_STRINGS_GUITAR,fbState,19,'fb');
+  buildNotePicker(document.getElementById('fbNotePicker'),fbState,'fb',chrom);
+}
+function bfView(v,btn){bfState.view=v;document.querySelectorAll('#sc-bass-fret .fbtn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');rebuildBass();}
+function bfToggleNotation(){bfState.notation=bfState.notation==='sharp'?'flat':'sharp';document.getElementById('bfNotationBtn').textContent=bfState.notation==='sharp'?'Show ♭':'Show ♯';rebuildBass();}
+function bfHighlight(n){bfState.highlight=bfState.highlight===n?null:n;rebuildBass();}
+function rebuildBass(){
+  const chrom=bfState.notation==='flat'?CHROM_FLAT:CHROM_SHARP;
+  buildFretboard('bassFB',FB_STRINGS_BASS,bfState,17,'bf');
+  buildNotePicker(document.getElementById('bfNotePicker'),bfState,'bf',chrom);
+}
+
+// ═══ INIT ═══
+loadData();
+updateHomeStats();
+renderLearn();
+buildKeyGrid();
+renderChords();
+renderTriads();
+initCof();
+rebuildGuitar();
+rebuildBass();
+</script>
+</body>
+</html>
