@@ -1859,125 +1859,241 @@ function renderChords(){
   wrap.innerHTML=html;
 }
 // ═══ CAGED SYSTEM ENGINE ═══
-// Returns all 5 CAGED positions for any root note + quality
+// The CAGED system: 5 distinct chord shapes, each with a different root string.
+// Shape → root string: C=A string, A=A string, G=low E & high e, E=low E, D=B string
+// Each shape is a fixed interval pattern. We calculate the fret by finding where
+// the root note lands on that shape's root string, then build the fingering from there.
+//
+// String open notes (semitone index, C=0):
+//   lowE=4, A=9, D=2, G=7, B=11, highE=4
+//
+// For each shape we define offsets from the "barre fret" (or nut for open shapes).
+// null = mute, 0 = open/barre, positive = frets above barre.
+
 function getCagedPositions(root, quality){
-  // quality: 'major'|'minor'|'7'|'m7'|'maj7'|'sus2'|'add9'
-  // We'll normalise to the 4 barre types; sus/add get major treatment
-  const q = (quality==='7')?'7':(quality==='m7')?'m7':(quality==='minor'||quality==='m7')?'minor':'major';
+  const q = (quality==='7')?'7':(quality==='m7')?'m7':(quality==='minor')?'minor':'major';
+  const ri = NOTE_ORDER.indexOf(root); // 0-11
 
-  const NOTE_IDX = NOTE_ORDER.indexOf(root);
-  // Fret on each string where root sits
-  // String opens (semitone indices): E=4, A=9, D=2, G=7, B=11, e=4
-  const STRING_OPEN = [4,9,2,7,11,4];
+  // How many frets above open to place root on a given string
+  // strOpen = semitone value of open string
+  function rootFret(strOpen){
+    let f = (ri - strOpen + 12) % 12;
+    return f; // 0 = open string is already the root
+  }
 
-  function rootFretOn(strOpen){ let f=(NOTE_IDX-strOpen+12)%12; return f; }
-  const eFret = rootFretOn(4); // low E string
-  const aFret = rootFretOn(9); // A string
-  const dFret = rootFretOn(2); // D string
-  const gFret = rootFretOn(7); // G string
-
-  // Helper: pick lowest sensible fret >= minFret
-  function bestFret(base, minFret=1){
-    let f = base;
-    while(f < minFret) f += 12;
+  // Advance fret to at least minFret, in octave steps
+  function atLeast(f, min){
+    while(f < min) f += 12;
     return f;
   }
 
   const positions = [];
 
-  // ── E SHAPE ── root on low E string
+  // ════════════════════════════════════════
+  // E SHAPE — root on low E string (open=4)
+  // Open template: 0,2,2,1,0,0 (E major)
+  // Offsets from barre: 0, +2, +2, +1, 0, 0
+  // ════════════════════════════════════════
   {
-    const sf = eFret; // 0 = open
+    const rf = rootFret(4); // fret on low E where root lives
+    const b = rf; // barre fret
     let data;
-    if(sf===0){
-      if(q==='major') data={frets:[0,2,2,1,0,0],fingers:[0,3,4,2,0,0],startFret:1,barre:null};
-      else if(q==='minor') data={frets:[0,2,2,0,0,0],fingers:[0,2,3,0,0,0],startFret:1,barre:null};
-      else if(q==='7') data={frets:[0,2,0,1,0,0],fingers:[0,3,0,1,0,0],startFret:1,barre:null};
-      else data={frets:[0,2,2,0,0,0],fingers:[0,2,3,0,0,0],startFret:1,barre:null};
+    if(b === 0){
+      // Open position
+      if(q==='major') data={frets:[0,2,2,1,0,0],fingers:[0,2,3,1,0,0],startFret:1,barre:null,openStrings:true};
+      else if(q==='minor') data={frets:[0,2,2,0,0,0],fingers:[0,2,3,0,0,0],startFret:1,barre:null,openStrings:true};
+      else if(q==='7') data={frets:[0,2,0,1,0,0],fingers:[0,2,0,1,0,0],startFret:1,barre:null,openStrings:true};
+      else if(q==='m7') data={frets:[0,2,0,0,0,0],fingers:[0,2,0,0,0,0],startFret:1,barre:null,openStrings:true};
     } else {
-      const s=bestFret(sf);
+      const s = atLeast(b, 1);
       if(q==='major') data={frets:[s,s+2,s+2,s+1,s,s],fingers:['B',3,4,2,'B','B'],startFret:s,barre:{fret:s,from:0,to:5}};
       else if(q==='minor') data={frets:[s,s+2,s+2,s,s,s],fingers:['B',3,4,'B','B','B'],startFret:s,barre:{fret:s,from:0,to:5}};
       else if(q==='7') data={frets:[s,s+2,s,s+1,s,s],fingers:['B',3,'B',2,'B','B'],startFret:s,barre:{fret:s,from:0,to:5}};
-      else data={frets:[s,s+2,s+2,s,s,s],fingers:['B',3,4,'B','B','B'],startFret:s,barre:{fret:s,from:0,to:5}};
+      else if(q==='m7') data={frets:[s,s+2,s,s,s,s],fingers:['B',3,'B','B','B','B'],startFret:s,barre:{fret:s,from:0,to:5}};
     }
-    positions.push({shape:'E',label:`E Shape${sf===0?' (Open)':' — fret '+bestFret(sf)}`,desc:'Root on low E string',rootStr:'Low E',data});
+    if(data) positions.push({
+      shape:'E', cagedOrder:4,
+      label: b===0 ? 'E Shape (Open)' : `E Shape — fret ${atLeast(b,1)}`,
+      desc:'Root on low E string',
+      fretPos: atLeast(b,1),
+      data
+    });
   }
 
-  // ── A SHAPE ── root on A string
+  // ════════════════════════════════════════
+  // D SHAPE — root on B string (open=11)
+  // Open template: x,x,0,2,3,2 (D major)
+  // Offsets from barre (B string): +2(D str), +2(G), +1(B barre-ish), 0(highE) — D shape uses top 4 strings
+  // More precisely: x, x, rf+2, rf+2, rf+1, rf  where rf = root on B string... 
+  // Actually in open D: D str=0, G=2, B=3, e=2. Root (D) is on D str open AND B str fret 3.
+  // Moveable D shape: root on HIGH E string; barre = root fret on high E
+  // Fingering: x, x, b+2, b+2, b+1, b  — but b is barre on B&highE, +1 on G, +2 on D
+  // Wait — in standard D shape the root is actually on the HIGH E string at the same fret as barre
+  // Let's use: root on high e string (open=4), same as low E
   {
-    const sf = aFret;
+    const rf = rootFret(4); // root on HIGH e string (same open note as low E)
+    const b = atLeast(rf, 1); // D shape doesn't really have an open form, min fret 1
+    // D shape offsets (from barre fret b on high e):
+    // high e = b (root), B = b+1 (maj3 for major, or b for minor), G = b+2, D = b+2, A = mute, E = mute
+    // Major: x, x, b+2, b+2, b+1, b
+    // Minor: x, x, b+2, b+1, b, b  (minor 3rd on G string)
     let data;
-    if(sf===0){
-      if(q==='major') data={frets:[null,0,2,2,2,0],fingers:[null,0,2,3,4,0],startFret:1,barre:null};
-      else if(q==='minor') data={frets:[null,0,2,2,1,0],fingers:[null,0,3,2,1,0],startFret:1,barre:null};
-      else if(q==='7') data={frets:[null,0,2,0,2,0],fingers:[null,0,2,0,1,0],startFret:1,barre:null};
-      else data={frets:[null,0,2,2,1,0],fingers:[null,0,3,2,1,0],startFret:1,barre:null};
+    if(q==='major') data={frets:[null,null,b+2,b+2,b+1,b],fingers:[null,null,3,4,2,1],startFret:b,barre:null};
+    else if(q==='minor') data={frets:[null,null,b+2,b+1,b,b],fingers:[null,null,3,2,1,1],startFret:b,barre:{fret:b,from:4,to:5}};
+    else if(q==='7') data={frets:[null,null,b+2,b,b+1,b],fingers:[null,null,3,'B',2,1],startFret:b,barre:{fret:b,from:5,to:5}};
+    else if(q==='m7') data={frets:[null,null,b+2,b,b,b],fingers:[null,null,3,'B','B','B'],startFret:b,barre:{fret:b,from:3,to:5}};
+    if(b <= 15) positions.push({
+      shape:'D', cagedOrder:5,
+      label:`D Shape — fret ${b}`,
+      desc:'Root on high e string (top strings only)',
+      fretPos: b,
+      data
+    });
+  }
+
+  // ════════════════════════════════════════
+  // C SHAPE — root on A string (open=9)
+  // Open template: x,3,2,0,1,0 (C major) — root (C) on A string fret 3
+  // Offsets from root fret (rf) on A string:
+  // Major: x, rf, rf-1, rf-3(or open), rf-2, rf-3(or open)
+  // This is complex because C shape uses open strings in open position.
+  // Moveable C shape barre: root on A string at fret rf
+  // x, rf, rf+2, rf+2, rf+2, rf  — NO, that's the A barre shape.
+  // True C shape moveable: x, rf, rf+2, rf+1, rf+1, rf-1... 
+  // Let's use the standard practical C barre shape (used by many method books):
+  // Root on A string. Barre index on A+highE, middle on D, ring on G, pinky on B
+  // x, b, b+2, b+2, b+2, b  — but this IS the A barre. 
+  // The REAL C shape moveable keeps the C chord's internal structure:
+  // Open C: x,3,2,0,1,0 → intervals from A string root: 0, -1, -3, -2, -3
+  // Moveable: x, b, b-1, b-3, b-2, b-3  but negative frets don't work when b<3
+  // Standard approach: C shape sits between A shape and G shape.
+  // Practical C-shape barre (as taught in most CAGED books):
+  // x, b, b+2, b+1, b+1, b-1  (only works from fret 3+)
+  {
+    const rf = rootFret(9); // root on A string
+    // C shape needs root on A string, and works from fret 3+ (open C is the fret 3 version for C)
+    // We want a position BETWEEN A shape and E shape going up the neck
+    // A shape for this root is at rf on A string
+    // E shape for this root is at rootFret(4) on low E
+    // C shape sits about 2-3 frets above the A shape position
+    // Let's put C shape at: A-string-root + 0, but use C-shape fingering pattern
+    // C-shape offsets from barre b (index at b on B and highE... actually C shape is complex)
+    // SIMPLEST correct version: treat C shape as a partial barre
+    // x, b, b+2, b+1, b+1, b-1 doesn't work cleanly in SVG for all roots
+    // Instead use the version where barre is at b-2, root at b on A string:
+    const b = atLeast(rf, 3); // C shape needs at least fret 3 to be playable
+    // C shape: index barre at b-2 covers strings B and highE at b-2... 
+    // Actually simplest faithful version:
+    // Open C: x,3,2,0,1,0 → barre-equivalent with capo at fret (b-3):
+    // Capo at (b-3): x, (b-3)+3, (b-3)+2, (b-3)+0, (b-3)+1, (b-3)+0
+    //              = x, b, b-1, b-3, b-2, b-3
+    // For display, startFret = b-3+1 = b-2, and we show 4 fret span
+    const capo = b - 3; // the "nut" equivalent
+    const startF = Math.max(1, capo + 1);
+    let data;
+    if(q==='major'){
+      // x, capo+3(=b), capo+2(=b-1), capo+0(open/low), capo+1(=b-2), capo+0
+      data={frets:[null,b,b-1,capo>0?capo:0,b-2,capo>0?capo:0],fingers:[null,4,3,0,1,0],startFret:startF,barre:capo>0?{fret:capo,from:3,to:5}:null};
+    } else if(q==='minor'){
+      // Minor C shape: x, b, b-1, capo, b-2, capo  (same but b string drops a semitone: b-3 not b-2... or use b-2 as minor = flatten 3rd)
+      // Am shape open: x,0,2,2,1,0 — that's A shape. C minor shape is less standard.
+      // Practical: x, b, b-1, capo, b-2, capo but minor = root, 5th, minor3rd, root, minor3rd, root
+      // Simpler: just use same as C major but flatten the B-string note by 1
+      data={frets:[null,b,b-1,capo>0?capo:0,b-3,capo>0?capo:0],fingers:[null,4,3,0,1,0],startFret:startF,barre:capo>0?{fret:capo,from:3,to:5}:null};
+    } else if(q==='7'){
+      // C7 open: x,3,2,3,1,0 → x, b, b-1, b, b-2, capo
+      data={frets:[null,b,b-1,b,b-2,capo>0?capo:0],fingers:[null,3,2,4,1,0],startFret:startF,barre:capo>0?{fret:capo,from:5,to:5}:null};
     } else {
-      const s=bestFret(sf);
+      data={frets:[null,b,b-1,capo>0?capo:0,b-3,capo>0?capo:0],fingers:[null,4,3,0,1,0],startFret:startF,barre:capo>0?{fret:capo,from:3,to:5}:null};
+    }
+    if(b <= 15) positions.push({
+      shape:'C', cagedOrder:1,
+      label: b===3 ? 'C Shape (Open)' : `C Shape — fret ${b}`,
+      desc:'Root on A string — C-shape fingering',
+      fretPos: b,
+      data
+    });
+  }
+
+  // ════════════════════════════════════════
+  // A SHAPE — root on A string (open=9)
+  // Open template: x,0,2,2,2,0 (A major)
+  // Offsets from barre b on A string: 0, +2, +2, +2, 0  (strings A,D,G,B,e)
+  // ════════════════════════════════════════
+  {
+    const rf = rootFret(9); // root on A string
+    const b = rf;
+    let data;
+    if(b === 0){
+      if(q==='major') data={frets:[null,0,2,2,2,0],fingers:[null,0,2,3,4,0],startFret:1,barre:null,openStrings:true};
+      else if(q==='minor') data={frets:[null,0,2,2,1,0],fingers:[null,0,2,3,1,0],startFret:1,barre:null,openStrings:true};
+      else if(q==='7') data={frets:[null,0,2,0,2,0],fingers:[null,0,2,0,1,0],startFret:1,barre:null,openStrings:true};
+      else if(q==='m7') data={frets:[null,0,2,0,1,0],fingers:[null,0,2,0,1,0],startFret:1,barre:null,openStrings:true};
+    } else {
+      const s = atLeast(b, 1);
       if(q==='major') data={frets:[null,s,s+2,s+2,s+2,s],fingers:[null,'B',3,4,2,'B'],startFret:s,barre:{fret:s,from:1,to:5}};
       else if(q==='minor') data={frets:[null,s,s+2,s+2,s+1,s],fingers:[null,'B',3,4,2,'B'],startFret:s,barre:{fret:s,from:1,to:5}};
       else if(q==='7') data={frets:[null,s,s+2,s,s+2,s],fingers:[null,'B',3,'B',2,'B'],startFret:s,barre:{fret:s,from:1,to:5}};
-      else data={frets:[null,s,s+2,s+2,s+1,s],fingers:[null,'B',3,4,2,'B'],startFret:s,barre:{fret:s,from:1,to:5}};
+      else if(q==='m7') data={frets:[null,s,s+2,s,s+1,s],fingers:[null,'B',3,'B',2,'B'],startFret:s,barre:{fret:s,from:1,to:5}};
     }
-    positions.push({shape:'A',label:`A Shape${sf===0?' (Open)':' — fret '+bestFret(sf)}`,desc:'Root on A string',rootStr:'A string',data});
+    if(data) positions.push({
+      shape:'A', cagedOrder:2,
+      label: b===0 ? 'A Shape (Open)' : `A Shape — fret ${atLeast(b,1)}`,
+      desc:'Root on A string',
+      fretPos: atLeast(b,1),
+      data
+    });
   }
 
-  // ── G SHAPE ── root on low E string (one octave above E shape, but different fingering)
-  // G shape root is on low E string; typical G shape sits with root 3 frets below D-string root
-  // We model the G major barre shape: root on strings 6 & 1, complex fingering
+  // ════════════════════════════════════════
+  // G SHAPE — root on low E and high e strings
+  // Open G template: 3,2,0,0,0,3 (G major) — root on E str fret3 AND highE fret3
+  // Offsets from root fret r on E string:
+  // Major: r, r-1, r-3(open), r-3(open), r-3(open), r
+  // Moveable G shape is one of the harder barre shapes; the root sits on frets 1 and 6.
+  // Practical moveable G shape:
+  // b(E), b-1(A), b-3(D)... but when b<3 can't go negative.
+  // This shape only comfortably appears from fret 3+ (open G) up to ~fret 10.
+  // Standard G-shape barre intervals from barre b:
+  //   E: b (root), A: b+2, D: b+2, G: b+1, B: b, e: b  — NO that's E shape again.
+  // TRUE G-shape uses a different pattern. Open G: 3,2,0,0,0,3
+  // Relative to root (G=fret3 on E): 0, -1, -3, -3, -3, 0
+  // So moveable: r, r-1, r-3, r-3, r-3, r  (needs r>=3)
   {
-    // G shape: root on low E. In open G: 3,2,0,0,0,3 — root on E string fret 3 AND high e string fret 3
-    // Moveable G shape: sf = same as E-string fret but we want a distinct position
-    // Typically G shape appears ~3-5 frets above A shape. Root still on low E.
-    // Barre form: R,R+2,R+2,R,R,R on strings 6,5,4,3,2,1 but root at R and R on highE
-    // Practical: G-shape barre = fret R on E&e, fret R+2 on A&D, fret R+1 on G, fret R on B
-    // We use the position that's HIGHER than the E-shape (add 12 if needed for variety)
-    const sf = eFret; // root on low E
-    const s = bestFret(sf===0?12:sf+12<=19?sf:sf, sf===0?1:sf+1); // push to next octave region
-    let actualS = (sf===0)?12: ((sf+12)<=19?(sf+12):sf);
-    if(actualS<1) actualS=12;
+    const rf = rootFret(4); // root on low E string
+    const r = atLeast(rf, 3); // G shape needs fret 3 minimum (open G is fret 3 for G)
+    const startF = Math.max(1, r - 3);
     let data;
-    if(q==='major') data={frets:[actualS,actualS+2,actualS+2,actualS+1,actualS,actualS],fingers:['B',3,4,2,'B','B'],startFret:actualS,barre:{fret:actualS,from:0,to:5}};
-    else if(q==='minor') data={frets:[actualS,actualS+2,actualS+2,actualS,actualS,actualS],fingers:['B',3,4,'B','B','B'],startFret:actualS,barre:{fret:actualS,from:0,to:5}};
-    else if(q==='7') data={frets:[actualS,actualS+2,actualS,actualS+1,actualS,actualS],fingers:['B',3,'B',2,'B','B'],startFret:actualS,barre:{fret:actualS,from:0,to:5}};
-    else data={frets:[actualS,actualS+2,actualS+2,actualS,actualS,actualS],fingers:['B',3,4,'B','B','B'],startFret:actualS,barre:{fret:actualS,from:0,to:5}};
-    // Only show if fret is playable
-    if(actualS<=17){
-      positions.push({shape:'G',label:`G Shape — fret ${actualS}`,desc:'Upper neck position (root on low E)',rootStr:'Low E (high octave)',data});
+    if(q==='major'){
+      // G major shape: r, r-1, r-3, r-3, r-3, r
+      data={frets:[r, r-1, r-3, r-3, r-3, r], fingers:[3,2,0,0,0,4], startFret:startF, barre:null};
+      // If r-3 == 0 it's an open string; if r-3 > 0 needs finger
+      if(r-3 > 0){
+        data.fingers=[3,2,1,1,1,4];
+        data.barre={fret:r-3,from:2,to:4};
+      }
+    } else if(q==='minor'){
+      // Gm shape: r, r-1, r-3, r-4, r-3, r  (minor 3rd on G string is 1 lower)
+      data={frets:[r, r-1, r-3, r-4>0?r-4:0, r-3, r], fingers:[3,2,1,0,1,4], startFret:startF, barre:null};
+      if(r-3 > 0 && r-4 > 0) data.barre={fret:r-4,from:3,to:3};
+    } else if(q==='7'){
+      // G7 shape: r, r-1, r-3, r-3, r-4, r  (minor 7th on B string)
+      data={frets:[r, r-1, r-3, r-3, r-4>0?r-4:0, r], fingers:[3,2,1,1,0,4], startFret:startF, barre:null};
+      if(r-3>0) data.barre={fret:r-3,from:2,to:3};
+    } else {
+      data={frets:[r, r-1, r-3, r-4>0?r-4:0, r-3, r], fingers:[3,2,1,0,1,4], startFret:startF, barre:null};
     }
+    if(r <= 15) positions.push({
+      shape:'G', cagedOrder:3,
+      label: r===3 ? 'G Shape (Open region)' : `G Shape — fret ${r}`,
+      desc:'Root on low E & high e strings',
+      fretPos: r,
+      data
+    });
   }
 
-  // ── C SHAPE ── root on A string (higher position than A shape)
-  {
-    const sf = aFret;
-    const actualS = sf===0?12: ((sf+12)<=17?(sf+12):sf);
-    let data;
-    if(actualS<=15){
-      if(q==='major') data={frets:[null,actualS,actualS+2,actualS+2,actualS+2,actualS],fingers:[null,'B',3,4,2,'B'],startFret:actualS,barre:{fret:actualS,from:1,to:5}};
-      else if(q==='minor') data={frets:[null,actualS,actualS+2,actualS+2,actualS+1,actualS],fingers:[null,'B',3,4,2,'B'],startFret:actualS,barre:{fret:actualS,from:1,to:5}};
-      else if(q==='7') data={frets:[null,actualS,actualS+2,actualS,actualS+2,actualS],fingers:[null,'B',3,'B',2,'B'],startFret:actualS,barre:{fret:actualS,from:1,to:5}};
-      else data={frets:[null,actualS,actualS+2,actualS+2,actualS+1,actualS],fingers:[null,'B',3,4,2,'B'],startFret:actualS,barre:{fret:actualS,from:1,to:5}};
-      positions.push({shape:'C',label:`C Shape — fret ${actualS}`,desc:'Upper neck position (root on A string)',rootStr:'A string (high octave)',data});
-    }
-  }
-
-  // ── D SHAPE ── root on B string
-  {
-    const sf = rootFretOn(11); // B string open=11
-    const s = bestFret(sf, 1);
-    let data;
-    if(s<=15){
-      // D shape: mute low E and A, root on B string
-      // Major D barre: x,x,s+2,s+2,s+2,s or simplified: x,x,R+2,R+1,R,x-ish
-      // Practical D-shape barre: fingers on top 4 strings
-      if(q==='major') data={frets:[null,null,s+2,s+2,s+1,s],fingers:[null,null,3,2,1,'B'],startFret:s,barre:{fret:s,from:5,to:5}};
-      else if(q==='minor') data={frets:[null,null,s+2,s+1,s,s],fingers:[null,null,3,2,'B','B'],startFret:s,barre:{fret:s,from:4,to:5}};
-      else if(q==='7') data={frets:[null,null,s+2,s,s+1,s],fingers:[null,null,3,'B',2,'B'],startFret:s,barre:{fret:s,from:5,to:5}};
-      else data={frets:[null,null,s+2,s+1,s,s],fingers:[null,null,3,2,'B','B'],startFret:s,barre:{fret:s,from:4,to:5}};
-      positions.push({shape:'D',label:`D Shape — fret ${s}`,desc:'Root on B string (treble strings)',rootStr:'B string',data});
-    }
-  }
+  // Sort by fret position (ascending up the neck)
+  positions.sort((a,b)=>a.fretPos-b.fretPos);
 
   return positions;
 }
