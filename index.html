@@ -405,6 +405,27 @@ body{background:var(--bg);color:var(--text);font-family:"Outfit",sans-serif;font
 .var-card{text-align:center;}
 .var-label{font-size:12px;color:var(--muted);margin-bottom:4px;}
 
+/* CAGED section in chord modal */
+.caged-intro{font-size:12px;color:var(--muted);line-height:1.5;margin-bottom:14px;padding:10px 12px;background:var(--surf2);border-radius:8px;}
+.caged-scroll{display:flex;gap:10px;overflow-x:auto;padding-bottom:6px;-webkit-overflow-scrolling:touch;margin-bottom:14px;}
+.caged-card{flex-shrink:0;width:168px;background:var(--surf2);border:1.5px solid var(--bdr2);border-radius:10px;padding:10px;text-align:center;}
+.caged-card.active-shape{border-color:var(--gold);}
+.caged-shape-label{font-family:"Bebas Neue",sans-serif;font-size:15px;letter-spacing:1px;color:var(--gold);margin-bottom:2px;}
+.caged-pos-desc{font-size:10px;color:var(--muted);margin-bottom:6px;line-height:1.3;}
+.caged-fret-tag{display:inline-block;background:var(--gold-d);border:1px solid rgba(240,192,64,0.3);border-radius:5px;padding:2px 7px;font-size:10px;color:var(--gold);font-weight:600;margin-top:5px;}
+.caged-tip-box{background:var(--gold-d);border-left:3px solid var(--gold);border-radius:0 8px 8px 0;padding:10px 12px;font-size:12px;color:#ddd;line-height:1.5;margin-top:6px;}
+.caged-tip-box strong{color:var(--gold);}
+
+/* note→chord panel on fretboard */
+.fb-chord-panel{padding:14px 20px 0;flex-shrink:0;}
+.fb-chord-panel-title{font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:8px;}
+.fb-chord-chips{display:flex;flex-wrap:wrap;gap:6px;}
+.fb-chord-chip{background:var(--surf);border:1px solid var(--bdr);border-radius:8px;padding:6px 12px;font-size:12px;font-weight:600;cursor:pointer;color:var(--text);transition:all 0.15s;}
+.fb-chord-chip:active{transform:scale(0.94);}
+.fb-chord-chip.maj{color:var(--green);border-color:rgba(80,224,144,0.3);}
+.fb-chord-chip.min{color:var(--blue);border-color:rgba(74,176,240,0.3);}
+.fb-chord-chip.dom{color:var(--gold);border-color:rgba(240,192,64,0.3);}
+
 /* practice guides */
 .practice-block{background:var(--surf);border:1px solid var(--bdr);border-radius:var(--r);
   padding:16px;margin-bottom:10px;}
@@ -715,10 +736,14 @@ body{background:var(--bg);color:var(--text);font-family:"Outfit",sans-serif;font
     <button class="fbtn" id="fbNotationBtn" onclick="fbToggleNotation()">Show ♭</button>
   </div>
   <div class="note-picker" id="fbNotePicker"></div>
+  <div id="fbChordPanel" class="fb-chord-panel" style="display:none">
+    <div class="fb-chord-panel-title">⬆ CHORDS CONTAINING THIS NOTE — TAP TO OPEN</div>
+    <div class="fb-chord-chips" id="fbChordChips"></div>
+  </div>
   <div class="fb-scroll">
     <div class="fb-wrap"><div class="fb" id="guitarFB"></div></div>
     <div class="card2" style="margin-top:8px;font-size:13px;color:var(--muted);line-height:1.6;">
-      <strong style="color:var(--gold);">How to read this:</strong> Each row is a string (low E top, high e bottom). Fret numbers across the top. Tap any note to highlight all occurrences. Every note repeats at the 12th fret one octave higher.
+      <strong style="color:var(--gold);">How to read this:</strong> Each row is a string (low E top, high e bottom). Fret numbers across the top. Tap any note to highlight all occurrences. Every note repeats at the 12th fret one octave higher.<br><br><strong style="color:var(--gold);">Tip:</strong> Tap any note then use the chord suggestions above to jump straight to its CAGED positions.
     </div>
   </div>
 </div>
@@ -1833,6 +1858,151 @@ function renderChords(){
   });
   wrap.innerHTML=html;
 }
+// ═══ CAGED SYSTEM ENGINE ═══
+// Returns all 5 CAGED positions for any root note + quality
+function getCagedPositions(root, quality){
+  // quality: 'major'|'minor'|'7'|'m7'|'maj7'|'sus2'|'add9'
+  // We'll normalise to the 4 barre types; sus/add get major treatment
+  const q = (quality==='7')?'7':(quality==='m7')?'m7':(quality==='minor'||quality==='m7')?'minor':'major';
+
+  const NOTE_IDX = NOTE_ORDER.indexOf(root);
+  // Fret on each string where root sits
+  // String opens (semitone indices): E=4, A=9, D=2, G=7, B=11, e=4
+  const STRING_OPEN = [4,9,2,7,11,4];
+
+  function rootFretOn(strOpen){ let f=(NOTE_IDX-strOpen+12)%12; return f; }
+  const eFret = rootFretOn(4); // low E string
+  const aFret = rootFretOn(9); // A string
+  const dFret = rootFretOn(2); // D string
+  const gFret = rootFretOn(7); // G string
+
+  // Helper: pick lowest sensible fret >= minFret
+  function bestFret(base, minFret=1){
+    let f = base;
+    while(f < minFret) f += 12;
+    return f;
+  }
+
+  const positions = [];
+
+  // ── E SHAPE ── root on low E string
+  {
+    const sf = eFret; // 0 = open
+    let data;
+    if(sf===0){
+      if(q==='major') data={frets:[0,2,2,1,0,0],fingers:[0,3,4,2,0,0],startFret:1,barre:null};
+      else if(q==='minor') data={frets:[0,2,2,0,0,0],fingers:[0,2,3,0,0,0],startFret:1,barre:null};
+      else if(q==='7') data={frets:[0,2,0,1,0,0],fingers:[0,3,0,1,0,0],startFret:1,barre:null};
+      else data={frets:[0,2,2,0,0,0],fingers:[0,2,3,0,0,0],startFret:1,barre:null};
+    } else {
+      const s=bestFret(sf);
+      if(q==='major') data={frets:[s,s+2,s+2,s+1,s,s],fingers:['B',3,4,2,'B','B'],startFret:s,barre:{fret:s,from:0,to:5}};
+      else if(q==='minor') data={frets:[s,s+2,s+2,s,s,s],fingers:['B',3,4,'B','B','B'],startFret:s,barre:{fret:s,from:0,to:5}};
+      else if(q==='7') data={frets:[s,s+2,s,s+1,s,s],fingers:['B',3,'B',2,'B','B'],startFret:s,barre:{fret:s,from:0,to:5}};
+      else data={frets:[s,s+2,s+2,s,s,s],fingers:['B',3,4,'B','B','B'],startFret:s,barre:{fret:s,from:0,to:5}};
+    }
+    positions.push({shape:'E',label:`E Shape${sf===0?' (Open)':' — fret '+bestFret(sf)}`,desc:'Root on low E string',rootStr:'Low E',data});
+  }
+
+  // ── A SHAPE ── root on A string
+  {
+    const sf = aFret;
+    let data;
+    if(sf===0){
+      if(q==='major') data={frets:[null,0,2,2,2,0],fingers:[null,0,2,3,4,0],startFret:1,barre:null};
+      else if(q==='minor') data={frets:[null,0,2,2,1,0],fingers:[null,0,3,2,1,0],startFret:1,barre:null};
+      else if(q==='7') data={frets:[null,0,2,0,2,0],fingers:[null,0,2,0,1,0],startFret:1,barre:null};
+      else data={frets:[null,0,2,2,1,0],fingers:[null,0,3,2,1,0],startFret:1,barre:null};
+    } else {
+      const s=bestFret(sf);
+      if(q==='major') data={frets:[null,s,s+2,s+2,s+2,s],fingers:[null,'B',3,4,2,'B'],startFret:s,barre:{fret:s,from:1,to:5}};
+      else if(q==='minor') data={frets:[null,s,s+2,s+2,s+1,s],fingers:[null,'B',3,4,2,'B'],startFret:s,barre:{fret:s,from:1,to:5}};
+      else if(q==='7') data={frets:[null,s,s+2,s,s+2,s],fingers:[null,'B',3,'B',2,'B'],startFret:s,barre:{fret:s,from:1,to:5}};
+      else data={frets:[null,s,s+2,s+2,s+1,s],fingers:[null,'B',3,4,2,'B'],startFret:s,barre:{fret:s,from:1,to:5}};
+    }
+    positions.push({shape:'A',label:`A Shape${sf===0?' (Open)':' — fret '+bestFret(sf)}`,desc:'Root on A string',rootStr:'A string',data});
+  }
+
+  // ── G SHAPE ── root on low E string (one octave above E shape, but different fingering)
+  // G shape root is on low E string; typical G shape sits with root 3 frets below D-string root
+  // We model the G major barre shape: root on strings 6 & 1, complex fingering
+  {
+    // G shape: root on low E. In open G: 3,2,0,0,0,3 — root on E string fret 3 AND high e string fret 3
+    // Moveable G shape: sf = same as E-string fret but we want a distinct position
+    // Typically G shape appears ~3-5 frets above A shape. Root still on low E.
+    // Barre form: R,R+2,R+2,R,R,R on strings 6,5,4,3,2,1 but root at R and R on highE
+    // Practical: G-shape barre = fret R on E&e, fret R+2 on A&D, fret R+1 on G, fret R on B
+    // We use the position that's HIGHER than the E-shape (add 12 if needed for variety)
+    const sf = eFret; // root on low E
+    const s = bestFret(sf===0?12:sf+12<=19?sf:sf, sf===0?1:sf+1); // push to next octave region
+    let actualS = (sf===0)?12: ((sf+12)<=19?(sf+12):sf);
+    if(actualS<1) actualS=12;
+    let data;
+    if(q==='major') data={frets:[actualS,actualS+2,actualS+2,actualS+1,actualS,actualS],fingers:['B',3,4,2,'B','B'],startFret:actualS,barre:{fret:actualS,from:0,to:5}};
+    else if(q==='minor') data={frets:[actualS,actualS+2,actualS+2,actualS,actualS,actualS],fingers:['B',3,4,'B','B','B'],startFret:actualS,barre:{fret:actualS,from:0,to:5}};
+    else if(q==='7') data={frets:[actualS,actualS+2,actualS,actualS+1,actualS,actualS],fingers:['B',3,'B',2,'B','B'],startFret:actualS,barre:{fret:actualS,from:0,to:5}};
+    else data={frets:[actualS,actualS+2,actualS+2,actualS,actualS,actualS],fingers:['B',3,4,'B','B','B'],startFret:actualS,barre:{fret:actualS,from:0,to:5}};
+    // Only show if fret is playable
+    if(actualS<=17){
+      positions.push({shape:'G',label:`G Shape — fret ${actualS}`,desc:'Upper neck position (root on low E)',rootStr:'Low E (high octave)',data});
+    }
+  }
+
+  // ── C SHAPE ── root on A string (higher position than A shape)
+  {
+    const sf = aFret;
+    const actualS = sf===0?12: ((sf+12)<=17?(sf+12):sf);
+    let data;
+    if(actualS<=15){
+      if(q==='major') data={frets:[null,actualS,actualS+2,actualS+2,actualS+2,actualS],fingers:[null,'B',3,4,2,'B'],startFret:actualS,barre:{fret:actualS,from:1,to:5}};
+      else if(q==='minor') data={frets:[null,actualS,actualS+2,actualS+2,actualS+1,actualS],fingers:[null,'B',3,4,2,'B'],startFret:actualS,barre:{fret:actualS,from:1,to:5}};
+      else if(q==='7') data={frets:[null,actualS,actualS+2,actualS,actualS+2,actualS],fingers:[null,'B',3,'B',2,'B'],startFret:actualS,barre:{fret:actualS,from:1,to:5}};
+      else data={frets:[null,actualS,actualS+2,actualS+2,actualS+1,actualS],fingers:[null,'B',3,4,2,'B'],startFret:actualS,barre:{fret:actualS,from:1,to:5}};
+      positions.push({shape:'C',label:`C Shape — fret ${actualS}`,desc:'Upper neck position (root on A string)',rootStr:'A string (high octave)',data});
+    }
+  }
+
+  // ── D SHAPE ── root on B string
+  {
+    const sf = rootFretOn(11); // B string open=11
+    const s = bestFret(sf, 1);
+    let data;
+    if(s<=15){
+      // D shape: mute low E and A, root on B string
+      // Major D barre: x,x,s+2,s+2,s+2,s or simplified: x,x,R+2,R+1,R,x-ish
+      // Practical D-shape barre: fingers on top 4 strings
+      if(q==='major') data={frets:[null,null,s+2,s+2,s+1,s],fingers:[null,null,3,2,1,'B'],startFret:s,barre:{fret:s,from:5,to:5}};
+      else if(q==='minor') data={frets:[null,null,s+2,s+1,s,s],fingers:[null,null,3,2,'B','B'],startFret:s,barre:{fret:s,from:4,to:5}};
+      else if(q==='7') data={frets:[null,null,s+2,s,s+1,s],fingers:[null,null,3,'B',2,'B'],startFret:s,barre:{fret:s,from:5,to:5}};
+      else data={frets:[null,null,s+2,s+1,s,s],fingers:[null,null,3,2,'B','B'],startFret:s,barre:{fret:s,from:4,to:5}};
+      positions.push({shape:'D',label:`D Shape — fret ${s}`,desc:'Root on B string (treble strings)',rootStr:'B string',data});
+    }
+  }
+
+  return positions;
+}
+
+// Map chord IDs to root + quality for CAGED
+function chordIdToRootQuality(id){
+  if(!id) return null;
+  // dim not supported in CAGED barre system
+  if(id.endsWith('dim')) return null;
+  if(id==='BarreE'||id==='BarreA') return null; // generic barre cards
+  // 7th chords
+  if(id.endsWith('m7')){ const r=id.replace('m7',''); if(NOTE_ORDER.includes(r)) return {root:r,quality:'m7',name:r+'m7'}; }
+  if(id.endsWith('7')&&!id.endsWith('maj7')){ const r=id.replace('7',''); if(NOTE_ORDER.includes(r)) return {root:r,quality:'7',name:r+'7'}; }
+  if(id.endsWith('maj7')){ const r=id.replace('maj7',''); if(NOTE_ORDER.includes(r)) return {root:r,quality:'major',name:r+'maj7'}; }
+  // sus/add — treat as major shape
+  if(id.endsWith('sus2')||id.endsWith('add9')){ const r=id.replace('sus2','').replace('add9',''); if(NOTE_ORDER.includes(r)) return {root:r,quality:'major',name:id}; }
+  // minor
+  if(id.endsWith('m')){ const r=id.replace(/m$/,''); if(NOTE_ORDER.includes(r)) return {root:r,quality:'minor',name:r+'m'}; }
+  // major
+  if(NOTE_ORDER.includes(id)) return {root:id,quality:'major',name:id};
+  // Fmaj7 special
+  if(id==='Fmaj7') return {root:'F',quality:'major',name:'Fmaj7'};
+  return null;
+}
+
 function openChordModal(id){
   // Try to find in chord library first
   let found=CHORDS.find(c=>c.id===id);
@@ -1857,14 +2027,39 @@ function openChordModal(id){
     document.getElementById('chordModalContent').innerHTML=`<div class="cm-handle"></div><div class="cm-name">${id}</div><p style="color:var(--muted);font-size:13px;margin-top:8px;">Use the 🔍 Any Chord navigator to find the fingering for this chord.</p><button class="btn-ghost" style="margin-top:16px" onclick="closeChordModal()">CLOSE</button>`;
     return;
   }
+
+  // Build existing variations section
   const svgs=found.variations.map(v=>`<div class="var-card"><div class="var-label">${v.label}</div>${drawChordSVG(v,160,170,false)}</div>`).join('');
+
+  // Build CAGED section
+  const rq = chordIdToRootQuality(found.id);
+  let cagedHtml = '';
+  if(rq){
+    const positions = getCagedPositions(rq.root, rq.quality);
+    if(positions.length>0){
+      const cards = positions.map(p=>`
+        <div class="caged-card">
+          <div class="caged-shape-label">${p.shape} SHAPE</div>
+          <div class="caged-pos-desc">${p.desc}</div>
+          ${drawChordSVG(p.data,155,165,false)}
+          <div class="caged-fret-tag">${p.label.includes('Open')?'Open position':p.label.replace(/[A-Z] Shape — /,'Fret ')}</div>
+        </div>`).join('');
+      cagedHtml = `
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:14px;letter-spacing:1px;color:var(--muted);margin:18px 0 8px;">🎸 CAGED SYSTEM — ALL NECK POSITIONS</div>
+        <div class="caged-intro">The same ${found.name} chord, played across the full neck using the 5 CAGED shapes. Scroll sideways to see every position.</div>
+        <div class="caged-scroll">${cards}</div>
+        <div class="caged-tip-box"><strong>How to use this:</strong> Each shape is the same chord — just a different fingering in a different area of the neck. Start with whichever position sits in the key area you're already playing in. Connecting these positions is how you unlock the full fretboard.</div>`;
+    }
+  }
+
   document.getElementById('chordModalContent').innerHTML=`
     <div class="cm-handle"></div>
     <div class="cm-name">${found.name}</div>
     <div class="cm-desc">${found.desc}</div>
     <div class="cm-tip"><strong>Tip:</strong> ${found.tip}</div>
-    <div style="font-family:'Bebas Neue',sans-serif;font-size:14px;letter-spacing:1px;color:var(--muted);margin-bottom:12px;">FINGERING</div>
+    <div style="font-family:'Bebas Neue',sans-serif;font-size:14px;letter-spacing:1px;color:var(--muted);margin-bottom:12px;">OPEN &amp; STANDARD VOICINGS</div>
     <div class="variations-grid">${svgs}</div>
+    ${cagedHtml}
     <button class="btn-ghost" style="margin-top:20px" onclick="closeChordModal()">CLOSE</button>`;
   document.getElementById('chordModal').classList.add('show');
 }
@@ -2161,7 +2356,63 @@ function buildNotePicker(pickerEl,state,prefix,chrom){
 }
 function fbView(v,btn){fbState.view=v;document.querySelectorAll('#sc-fretboard .fbtn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');rebuildGuitar();}
 function fbToggleNotation(){fbState.notation=fbState.notation==='sharp'?'flat':'sharp';document.getElementById('fbNotationBtn').textContent=fbState.notation==='sharp'?'Show ♭':'Show ♯';rebuildGuitar();}
-function fbHighlight(n){fbState.highlight=fbState.highlight===n?null:n;rebuildGuitar();}
+function fbHighlight(n){
+  fbState.highlight=fbState.highlight===n?null:n;
+  rebuildGuitar();
+  // Show chord suggestions
+  const panel=document.getElementById('fbChordPanel');
+  const chips=document.getElementById('fbChordChips');
+  if(!fbState.highlight){panel.style.display='none';return;}
+  // Find all chords containing this note
+  const note=fbState.highlight;
+  const noteIdx=CHROM_SHARP.indexOf(note)!==-1?CHROM_SHARP.indexOf(note):CHROM_FLAT.indexOf(note);
+  const suggestions=[];
+  // Check major, minor, dom7 for all 12 roots
+  CHROM_SHARP.forEach((root,ri)=>{
+    // Major: root, +4, +7
+    if([0,4,7].some(i=>(ri+i)%12===noteIdx)) suggestions.push({root,quality:'major',label:root,cls:'maj'});
+    // Minor: root, +3, +7
+    if([0,3,7].some(i=>(ri+i)%12===noteIdx)) suggestions.push({root,quality:'minor',label:root+'m',cls:'min'});
+    // Dom7: root, +4, +7, +10
+    if([0,4,7,10].some(i=>(ri+i)%12===noteIdx)) suggestions.push({root,quality:'7',label:root+'7',cls:'dom'});
+  });
+  // Deduplicate and limit to most useful
+  const seen=new Set();
+  const unique=suggestions.filter(s=>{const k=s.label;if(seen.has(k))return false;seen.add(k);return true;});
+  chips.innerHTML=unique.map(s=>`<div class="fb-chord-chip ${s.cls}" onclick="openFbChordFromNote('${s.root}','${s.quality}','${s.label}')">${s.label}</div>`).join('');
+  panel.style.display='block';
+}
+function openFbChordFromNote(root, quality, label){
+  // Build a synthetic chord entry and open the CAGED modal directly
+  const displayN={'C#':'C#/Db','D#':'D#/Eb','F#':'F#/Gb','G#':'G#/Ab','A#':'A#/Bb'}[root]||root;
+  const qualLabel={'major':'Major','minor':'Minor','7':'Dominant 7th','m7':'Minor 7th'}[quality]||quality;
+  const positions = getCagedPositions(root, quality);
+  if(!positions.length){ openChordModal(label); return; }
+  const cards = positions.map(p=>`
+    <div class="caged-card">
+      <div class="caged-shape-label">${p.shape} SHAPE</div>
+      <div class="caged-pos-desc">${p.desc}</div>
+      ${drawChordSVG(p.data,155,165,false)}
+      <div class="caged-fret-tag">${p.label.includes('Open')?'Open position':p.label.replace(/[A-Z] Shape — /,'Fret ')}</div>
+    </div>`).join('');
+
+  // Also check if there's a known voicing in CHORDS
+  const knownChord = CHORDS.find(c=>c.id===label)||CHORDS.find(c=>c.id===root)||CHORDS.find(c=>c.id===root+'m');
+  const knownSvgs = knownChord ? knownChord.variations.map(v=>`<div class="var-card"><div class="var-label">${v.label}</div>${drawChordSVG(v,160,170,false)}</div>`).join('') : '';
+  const knownSection = knownSvgs ? `<div style="font-family:'Bebas Neue',sans-serif;font-size:14px;letter-spacing:1px;color:var(--muted);margin-bottom:10px;">COMMON VOICINGS</div><div class="variations-grid" style="margin-bottom:18px;">${knownSvgs}</div>` : '';
+
+  document.getElementById('chordModalContent').innerHTML=`
+    <div class="cm-handle"></div>
+    <div class="cm-name">${label}</div>
+    <div class="cm-desc" style="margin-bottom:14px;">${displayN} ${qualLabel} — all positions on the neck</div>
+    ${knownSection}
+    <div style="font-family:'Bebas Neue',sans-serif;font-size:14px;letter-spacing:1px;color:var(--muted);margin-bottom:8px;">🎸 CAGED POSITIONS</div>
+    <div class="caged-intro">Every way to play ${label} across the fretboard. Scroll sideways →</div>
+    <div class="caged-scroll">${cards}</div>
+    <div class="caged-tip-box"><strong>Tip:</strong> The note you tapped (${fbState.highlight}) appears in all of these chord shapes. Use whichever position fits where you're already playing on the neck.</div>
+    <button class="btn-ghost" style="margin-top:16px" onclick="closeChordModal()">CLOSE</button>`;
+  document.getElementById('chordModal').classList.add('show');
+}
 function rebuildGuitar(){
   const chrom=fbState.notation==='flat'?CHROM_FLAT:CHROM_SHARP;
   buildFretboard('guitarFB',FB_STRINGS_GUITAR,fbState,19,'fb');
