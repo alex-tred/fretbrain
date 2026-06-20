@@ -2153,13 +2153,15 @@ function openChordModal(id){
   if(rq){
     const positions = getCagedPositions(rq.root, rq.quality);
     if(positions.length>0){
-      const cards = positions.map(p=>`
+      const cards = positions.map(p=>{
+        const fretTag = p.label.includes('Open') ? 'Open position' : `Fret ${p.fretPos}`;
+        return `
         <div class="caged-card">
           <div class="caged-shape-label">${p.shape} SHAPE</div>
           <div class="caged-pos-desc">${p.desc}</div>
           ${drawChordSVG(p.data,155,165,false)}
-          <div class="caged-fret-tag">${p.label.includes('Open')?'Open position':p.label.replace(/[A-Z] Shape — /,'Fret ')}</div>
-        </div>`).join('');
+          <div class="caged-fret-tag">${fretTag}</div>
+        </div>`;}).join('');
       cagedHtml = `
         <div style="font-family:'Bebas Neue',sans-serif;font-size:14px;letter-spacing:1px;color:var(--muted);margin:18px 0 8px;">🎸 CAGED SYSTEM — ALL NECK POSITIONS</div>
         <div class="caged-intro">The same ${found.name} chord, played across the full neck using the 5 CAGED shapes. Scroll sideways to see every position.</div>
@@ -2181,30 +2183,33 @@ function openChordModal(id){
 }
 function closeChordModal(e){if(!e||e.target===document.getElementById('chordModal')){document.getElementById('chordModal').classList.remove('show');}}
 function drawChordSVG(variation,width,height,small){
-  const{frets,fingers,startFret,barre}=variation;
+  const{frets,fingers,startFret,barre,openStrings}=variation;
+  // Show nut line only for genuinely open position chords (no barre at fret 1)
+  const isOpenPos = startFret===1 && !barre && openStrings!==false;
   const strings=6,fretCount=4;
   const padL=small?16:26,padT=small?20:28,padB=small?10:18,padR=small?6:14;
   const W=width-padL-padR,H=height-padT-padB;
   const sS=W/(strings-1),fS=H/fretCount;
   const dR=small?8:12,fSize=small?7:10,lSize=small?8:11;
   let svg=`<svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">`;
-  if(startFret===1){svg+=`<rect x="${padL}" y="${padT}" width="${W}" height="4" fill="#ccc" rx="1"/>`;}
+  if(isOpenPos){svg+=`<rect x="${padL}" y="${padT}" width="${W}" height="4" fill="#ccc" rx="1"/>`;}
   else{svg+=`<text x="${padL-4}" y="${padT+fS*0.6}" text-anchor="end" font-size="${lSize}" fill="#888" font-family="Outfit,sans-serif">${startFret}fr</text>`;}
-  for(let f=0;f<=fretCount;f++){const y=padT+(startFret===1?4:0)+f*fS;svg+=`<line x1="${padL}" y1="${y}" x2="${padL+W}" y2="${y}" stroke="#333" stroke-width="1"/>`;}
-  for(let s=0;s<strings;s++){const x=padL+s*sS;svg+=`<line x1="${x}" y1="${padT+(startFret===1?4:0)}" x2="${x}" y2="${padT+(startFret===1?4:0)+fretCount*fS}" stroke="#555" stroke-width="${1+(5-s)*0.2}"/>`;}
-  if(barre){const bF=barre.fret-startFret+1,y=padT+(startFret===1?4:0)+(bF-0.5)*fS,x1=padL+barre.from*sS,x2=padL+barre.to*sS;
+  const topOffset = isOpenPos ? 4 : 0;
+  for(let f=0;f<=fretCount;f++){const y=padT+topOffset+f*fS;svg+=`<line x1="${padL}" y1="${y}" x2="${padL+W}" y2="${y}" stroke="#333" stroke-width="1"/>`;}
+  for(let s=0;s<strings;s++){const x=padL+s*sS;svg+=`<line x1="${x}" y1="${padT+topOffset}" x2="${x}" y2="${padT+topOffset+fretCount*fS}" stroke="#555" stroke-width="${1+(5-s)*0.2}"/>`;}
+  if(barre){const bF=barre.fret-startFret+1,y=padT+topOffset+(bF-0.5)*fS,x1=padL+barre.from*sS,x2=padL+barre.to*sS;
     svg+=`<rect x="${x1}" y="${y-dR*0.85}" width="${x2-x1}" height="${dR*1.7}" rx="${dR}" fill="${FINGER_COLORS['B']}"/>`;}
   frets.forEach((fret,sIdx)=>{
     const x=padL+sIdx*sS;
     if(fret===null){svg+=`<text x="${x}" y="${padT-10}" text-anchor="middle" font-size="${lSize}" fill="#888" font-family="Outfit,sans-serif">✕</text>`;}
     else if(fret===0){svg+=`<circle cx="${x}" cy="${padT-10}" r="${dR*0.55}" fill="none" stroke="#666" stroke-width="1.5"/>`;}
     else{const finger=fingers?fingers[sIdx]:null;if(finger==='B'||finger===0)return;
-      const rF=fret-startFret+1,y=padT+(startFret===1?4:0)+(rF-0.5)*fS;
+      const rF=fret-startFret+1,y=padT+topOffset+(rF-0.5)*fS;
       const color=finger?FINGER_COLORS[finger]||'#444':'#444';
       svg+=`<circle cx="${x}" cy="${y}" r="${dR}" fill="${color}"/>`;
       if(finger&&!small)svg+=`<text x="${x}" y="${y+fSize*0.38}" text-anchor="middle" font-size="${fSize}" fill="#fff" font-weight="700" font-family="Outfit,sans-serif">${finger}</text>`;}
   });
-  ['E','A','D','G','B','e'].forEach((n,s)=>{const x=padL+s*sS,y=padT+(startFret===1?4:0)+fretCount*fS+11;svg+=`<text x="${x}" y="${y}" text-anchor="middle" font-size="${lSize-1}" fill="#777" font-family="Outfit,sans-serif">${n}</text>`;});
+  ['E','A','D','G','B','e'].forEach((n,s)=>{const x=padL+s*sS,y=padT+topOffset+fretCount*fS+11;svg+=`<text x="${x}" y="${y}" text-anchor="middle" font-size="${lSize-1}" fill="#777" font-family="Outfit,sans-serif">${n}</text>`;});
   return svg+'</svg>';
 }
 
@@ -2504,13 +2509,15 @@ function openFbChordFromNote(root, quality, label){
   const qualLabel={'major':'Major','minor':'Minor','7':'Dominant 7th','m7':'Minor 7th'}[quality]||quality;
   const positions = getCagedPositions(root, quality);
   if(!positions.length){ openChordModal(label); return; }
-  const cards = positions.map(p=>`
+  const cards = positions.map(p=>{
+    const fretTag = p.label.includes('Open') ? 'Open position' : `Fret ${p.fretPos}`;
+    return `
     <div class="caged-card">
       <div class="caged-shape-label">${p.shape} SHAPE</div>
       <div class="caged-pos-desc">${p.desc}</div>
       ${drawChordSVG(p.data,155,165,false)}
-      <div class="caged-fret-tag">${p.label.includes('Open')?'Open position':p.label.replace(/[A-Z] Shape — /,'Fret ')}</div>
-    </div>`).join('');
+      <div class="caged-fret-tag">${fretTag}</div>
+    </div>`;}).join('');
 
   // Also check if there's a known voicing in CHORDS
   const knownChord = CHORDS.find(c=>c.id===label)||CHORDS.find(c=>c.id===root)||CHORDS.find(c=>c.id===root+'m');
