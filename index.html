@@ -455,6 +455,14 @@ body{background:var(--bg);color:var(--text);font-family:"Outfit",sans-serif;font
 .sm-dots-row{display:flex;justify-content:center;gap:8px;margin-bottom:16px;}
 .sm-dot-nav{width:8px;height:8px;border-radius:50%;background:var(--bdr2);cursor:pointer;transition:background 0.15s;}
 .sm-dot-nav.active{background:var(--gold);}
+.sm-view-toggle{display:flex;gap:6px;background:var(--surf2);border:1px solid var(--bdr2);border-radius:10px;padding:4px;margin-bottom:14px;}
+.sm-view-btn{flex:1;background:none;border:none;border-radius:7px;padding:8px 4px;font-family:"Outfit",sans-serif;font-size:12px;font-weight:600;color:var(--muted);cursor:pointer;}
+.sm-view-btn.active{background:var(--gold);color:var(--bg);}
+.sm-fullneck-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;margin-bottom:10px;padding-bottom:4px;}
+.sm-legend{display:flex;flex-wrap:wrap;gap:14px;justify-content:center;margin-bottom:16px;font-size:11px;color:var(--muted);}
+.sm-legend-item{display:flex;align-items:center;gap:6px;}
+.sm-legend-dot{width:13px;height:13px;border-radius:50%;flex-shrink:0;}
+.sm-full-sub{font-size:11px;color:var(--muted);text-align:center;margin-bottom:12px;}
 </style>
 .bn-root-grid{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:18px;}
 .bn-root-btn{background:var(--surf);border:1.5px solid var(--bdr);border-radius:9px;
@@ -2278,12 +2286,17 @@ const SCALE_KEY_MAP = {
   natural:    {major:'natural',    minor:'minorNat'},
 };
 
-let scaleModalState = {scaleKey:null, keyId:null, pos:0};
+let scaleModalState = {scaleKey:null, keyId:null, pos:0, view:'boxes'};
 
 function openScaleModal(scaleKey, keyId){
-  scaleModalState = {scaleKey, keyId, pos:0};
+  scaleModalState = {scaleKey, keyId, pos:0, view: scaleModalState.view||'boxes'};
   renderScaleModal();
   document.getElementById('scaleModal').classList.add('show');
+}
+
+function scaleModalSetView(view){
+  scaleModalState.view = view;
+  renderScaleModal();
 }
 
 function closeScaleModal(e){
@@ -2319,31 +2332,56 @@ function getRootFret(keyId){
 }
 
 function renderScaleModal(){
-  const {scaleKey, keyId, pos} = scaleModalState;
+  const {scaleKey, keyId, pos, view} = scaleModalState;
   const key = SONG_KEYS.find(k=>k.id===keyId);
   const scales = SCALE_INFO[key.type];
   const scale = scales[scaleKey];
-  const shapes = getScaleShapes();
-  const shape = shapes[pos];
-  const rootFret = getRootFret(keyId);
 
-  // Calculate absolute start fret for this position
-  let absFret = (rootFret + shape.rootOffset) % 12;
-  if(absFret === 0) absFret = 12; // avoid open position for clarity
-  if(absFret < 1) absFret = 1;
+  const toggleHtml = `
+    <div class="sm-view-toggle">
+      <button class="sm-view-btn${view==='boxes'?' active':''}" onclick="scaleModalSetView('boxes')">BOX POSITIONS</button>
+      <button class="sm-view-btn${view==='full'?' active':''}" onclick="scaleModalSetView('full')">FULL FRETBOARD</button>
+    </div>`;
 
-  const svg = drawScaleBox(shape, absFret);
-  const dotsHtml = shapes.map((_,i)=>
-    `<div class="sm-dot-nav${i===pos?' active':''}" onclick="scaleModalGoto(${i})"></div>`
-  ).join('');
-
-  const posDescriptions = [
-    'Box 1 — home position, root on low E and high e strings',
-    'Box 2 — shifts up the neck, new fingering pattern',
-    'Box 3 — mid neck, same notes different feel',
-    'Box 4 — upper mid neck position',
-    'Box 5 — connects back to Box 1 an octave up',
-  ];
+  let bodyHtml;
+  if(view==='full'){
+    const svg = drawFullNeckScale(key);
+    bodyHtml = `
+      <div class="sm-full-sub">Every note of ${key.display} ${key.type==='major'?'major':'minor'} across the whole neck</div>
+      <div class="sm-fullneck-wrap">${svg}</div>
+      <div class="sm-legend">
+        <div class="sm-legend-item"><div class="sm-legend-dot" style="background:#f0c040;"></div>Root</div>
+        <div class="sm-legend-item"><div class="sm-legend-dot" style="background:#4ab0f0;"></div>Pentatonic (safe notes)</div>
+        <div class="sm-legend-item"><div class="sm-legend-dot" style="background:transparent;border:1.5px solid #c060f0;"></div>Extra scale note (4th/7th — tension)</div>
+      </div>`;
+  } else {
+    const shapes = getScaleShapes();
+    const shape = shapes[pos];
+    const rootFret = getRootFret(keyId);
+    let absFret = (rootFret + shape.rootOffset) % 12;
+    if(absFret === 0) absFret = 12;
+    if(absFret < 1) absFret = 1;
+    const svg = drawScaleBox(shape, absFret);
+    const dotsHtml = shapes.map((_,i)=>
+      `<div class="sm-dot-nav${i===pos?' active':''}" onclick="scaleModalGoto(${i})"></div>`
+    ).join('');
+    const posDescriptions = [
+      'Box 1 — home position, root on low E and high e strings',
+      'Box 2 — shifts up the neck, new fingering pattern',
+      'Box 3 — mid neck, same notes different feel',
+      'Box 4 — upper mid neck position',
+      'Box 5 — connects back to Box 1 an octave up',
+    ];
+    bodyHtml = `
+      <div class="sm-pos-nav">
+        <button class="sm-nav-btn" onclick="scaleModalNav(-1)" ${pos===0?'disabled':''}>←</button>
+        <div class="sm-pos-label">${shape.name}</div>
+        <button class="sm-nav-btn" onclick="scaleModalNav(1)" ${pos===shapes.length-1?'disabled':''}>→</button>
+      </div>
+      <div class="sm-pos-sub">Starts around fret ${absFret} · ${posDescriptions[pos]||''}</div>
+      <div class="sm-diagram">${svg}</div>
+      <div class="sm-dots-row">${dotsHtml}</div>`;
+  }
 
   document.getElementById('scaleModalContent').innerHTML = `
     <div class="sm-handle"></div>
@@ -2351,14 +2389,8 @@ function renderScaleModal(){
     <div class="sm-use">${scale.use}</div>
     <div class="sm-desc">${scale.desc}</div>
     <div class="sm-tip"><strong>💡 Tip:</strong> ${scale.tip}</div>
-    <div class="sm-pos-nav">
-      <button class="sm-nav-btn" onclick="scaleModalNav(-1)" ${pos===0?'disabled':''}>←</button>
-      <div class="sm-pos-label">${shape.name}</div>
-      <button class="sm-nav-btn" onclick="scaleModalNav(1)" ${pos===shapes.length-1?'disabled':''}>→</button>
-    </div>
-    <div class="sm-pos-sub">Starts around fret ${absFret} · ${posDescriptions[pos]||''}</div>
-    <div class="sm-diagram">${svg}</div>
-    <div class="sm-dots-row">${dotsHtml}</div>
+    ${toggleHtml}
+    ${bodyHtml}
     <button class="btn-ghost" onclick="closeScaleModal()">CLOSE</button>
   `;
 }
@@ -2405,6 +2437,69 @@ function drawScaleBox(shape, startFret){
       svg += `<circle cx="${x}" cy="${y}" r="${dR}" fill="${fill}"/>`;
       if(isRoot) svg += `<text x="${x}" y="${y+4}" text-anchor="middle" font-size="9" font-weight="700" fill="${textCol}" font-family="Outfit,sans-serif">R</text>`;
     });
+  });
+
+  svg += '</svg>';
+  return svg;
+}
+
+// Draws every note of a key's full scale across the whole neck in one diagram.
+// Root = gold, pentatonic notes (shared by major pentatonic & relative minor
+// pentatonic — they're the same 5 notes) = blue filled, the remaining 2 scale
+// notes (4th & 7th degree) = small outlined dots. Notes outside the key aren't shown.
+function drawFullNeckScale(key){
+  const strings = [{name:'E',open:4},{name:'A',open:9},{name:'D',open:2},{name:'G',open:7},{name:'B',open:11},{name:'e',open:4}];
+  const numFrets = 15;
+  const rootIdx = key.root;
+  const scaleIntervals = key.type==='major' ? SCALE_INTERVALS.natural : SCALE_INTERVALS.minorNat;
+  const pentIntervals  = key.type==='major' ? SCALE_INTERVALS.pentatonic : SCALE_INTERVALS.minorPent;
+
+  const padTop=14, rowH=24, openX=32, nutX=50, fretW=27, padBottom=22;
+  const w = nutX + numFrets*fretW + 14;
+  const h = padTop + strings.length*rowH + padBottom;
+  const markerFrets=[3,5,7,9,12,15];
+
+  let svg = `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">`;
+
+  // fret number labels
+  markerFrets.forEach(f=>{
+    if(f>numFrets) return;
+    const x = nutX + (f-0.5)*fretW;
+    svg += `<text x="${x}" y="${h-8}" text-anchor="middle" font-size="9" fill="#666" font-family="Outfit,sans-serif">${f}</text>`;
+  });
+
+  // fret lines (nut is thicker)
+  for(let f=0; f<=numFrets; f++){
+    const x = nutX + f*fretW;
+    svg += `<line x1="${x}" y1="${padTop}" x2="${x}" y2="${padTop+strings.length*rowH}" stroke="${f===0?'#aaa':'#333'}" stroke-width="${f===0?2.5:1}"/>`;
+  }
+
+  // string lines + names
+  strings.forEach((str,i)=>{
+    const y = padTop + i*rowH + rowH/2;
+    const thickness = 1 + (strings.length-1-i)*0.3;
+    svg += `<line x1="${openX}" y1="${y}" x2="${nutX+numFrets*fretW}" y2="${y}" stroke="#555" stroke-width="${thickness}"/>`;
+    svg += `<text x="14" y="${y+4}" text-anchor="middle" font-size="9" fill="#777" font-family="Outfit,sans-serif">${str.name}</text>`;
+  });
+
+  // note dots
+  strings.forEach((str,i)=>{
+    const y = padTop + i*rowH + rowH/2;
+    for(let f=0; f<=numFrets; f++){
+      const interval = (str.open + f - rootIdx + 1200) % 12;
+      if(!scaleIntervals.includes(interval)) continue;
+      const isRoot = interval===0;
+      const isPent = pentIntervals.includes(interval);
+      const x = f===0 ? openX : nutX + (f-0.5)*fretW;
+      if(isRoot){
+        svg += `<circle cx="${x}" cy="${y}" r="8" fill="#f0c040"/>`;
+        svg += `<text x="${x}" y="${y+3}" text-anchor="middle" font-size="8" font-weight="700" fill="#000" font-family="Outfit,sans-serif">R</text>`;
+      } else if(isPent){
+        svg += `<circle cx="${x}" cy="${y}" r="6.5" fill="#4ab0f0"/>`;
+      } else {
+        svg += `<circle cx="${x}" cy="${y}" r="5" fill="none" stroke="#c060f0" stroke-width="1.5"/>`;
+      }
+    }
   });
 
   svg += '</svg>';
