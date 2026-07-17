@@ -319,6 +319,9 @@ body{background:var(--bg);color:var(--text);font-family:"Outfit",sans-serif;font
 .ndot.shp{background:var(--red);color:#fff;}
 .ndot.root{background:#fff;color:#000;border-color:var(--gold);box-shadow:0 0 10px rgba(240,192,64,0.6);}
 .ndot.hidden{opacity:0;pointer-events:none;}
+.ndot.kroot{background:var(--gold);color:#000;box-shadow:0 0 10px rgba(240,192,64,0.6);}
+.ndot.kscale{background:var(--blue);color:#000;}
+.fb-rowlabel{font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);padding:12px 20px 0;flex-shrink:0;}
 .fb-markers{display:flex;padding:6px 32px 0;padding-left:calc(32px + 44px + 8px + 8px);}
 .fb-mc{flex:1;display:flex;justify-content:center;border-left:3px solid transparent;}
 .fb-dot{width:7px;height:7px;border-radius:50%;background:rgba(255,255,255,0.12);}
@@ -737,12 +740,21 @@ body{background:var(--bg);color:var(--text);font-family:"Outfit",sans-serif;font
     <div class="back" onclick="showScreen('sc-ref')">←</div>
     <div class="topbar-title">GUITAR FRETBOARD</div>
   </div>
-  <div class="fb-controls">
+  <div class="fb-controls" id="fbViewRow">
     <button class="fbtn active" onclick="fbView('all',this)">All Notes</button>
     <button class="fbtn" onclick="fbView('naturals',this)">Naturals</button>
     <button class="fbtn" onclick="fbView('sharps',this)">Sharps</button>
     <button class="fbtn" id="fbNotationBtn" onclick="fbToggleNotation()">Show ♭</button>
   </div>
+  <div class="fb-rowlabel">Tuning</div>
+  <div class="fb-controls" id="fbTuningRow"></div>
+  <div class="fb-rowlabel">Highlight a key</div>
+  <div class="fb-controls">
+    <button class="fbtn active" id="fbKeyOffBtn" onclick="fbKeyOff()">No Key</button>
+    <button class="fbtn" id="fbKeyMajBtn" onclick="fbSetKeyType('major')">Major</button>
+    <button class="fbtn" id="fbKeyMinBtn" onclick="fbSetKeyType('minor')">Minor</button>
+  </div>
+  <div class="note-picker" id="fbKeyRootPicker" style="display:none"></div>
   <div class="note-picker" id="fbNotePicker"></div>
   <div id="fbChordPanel" class="fb-chord-panel" style="display:none">
     <div class="fb-chord-panel-title">⬆ CHORDS CONTAINING THIS NOTE — TAP TO OPEN</div>
@@ -751,7 +763,7 @@ body{background:var(--bg);color:var(--text);font-family:"Outfit",sans-serif;font
   <div class="fb-scroll">
     <div class="fb-wrap"><div class="fb" id="guitarFB"></div></div>
     <div class="card2" style="margin-top:8px;font-size:13px;color:var(--muted);line-height:1.6;">
-      <strong style="color:var(--gold);">How to read this:</strong> Each row is a string (low E top, high e bottom). Fret numbers across the top. Tap any note to highlight all occurrences. Every note repeats at the 12th fret one octave higher.<br><br><strong style="color:var(--gold);">Tip:</strong> Tap any note then use the chord suggestions above to jump straight to its CAGED positions.
+      <strong style="color:var(--gold);">How to read this:</strong> Each row is a string, high e on top down to low E at the bottom — matching what you see looking down at the neck. Fret numbers across the top. Tap any note to highlight all occurrences. Every note repeats at the 12th fret one octave higher.<br><br><strong style="color:var(--gold);">Tunings:</strong> switch tuning above — the whole board recalculates, including chord suggestions.<br><br><strong style="color:var(--gold);">Keys:</strong> pick Major/Minor + a root to see only the notes in that key — <span style="color:var(--gold);">gold</span> = root, <span style="color:var(--blue);">blue</span> = the rest of the scale. Everything else fades out.<br><br><strong style="color:var(--gold);">Tip:</strong> Tap any note then use the chord suggestions above to jump straight to its CAGED positions.
     </div>
   </div>
 </div>
@@ -762,16 +774,25 @@ body{background:var(--bg);color:var(--text);font-family:"Outfit",sans-serif;font
     <div class="back" onclick="showScreen('sc-ref')">←</div>
     <div class="topbar-title">BASS FRETBOARD</div>
   </div>
-  <div class="fb-controls">
+  <div class="fb-controls" id="bfViewRow">
     <button class="fbtn active" onclick="bfView('all',this)">All Notes</button>
     <button class="fbtn" onclick="bfView('naturals',this)">Naturals</button>
     <button class="fbtn" id="bfNotationBtn" onclick="bfToggleNotation()">Show ♭</button>
   </div>
+  <div class="fb-rowlabel">Tuning</div>
+  <div class="fb-controls" id="bfTuningRow"></div>
+  <div class="fb-rowlabel">Highlight a key</div>
+  <div class="fb-controls">
+    <button class="fbtn active" id="bfKeyOffBtn" onclick="bfKeyOff()">No Key</button>
+    <button class="fbtn" id="bfKeyMajBtn" onclick="bfSetKeyType('major')">Major</button>
+    <button class="fbtn" id="bfKeyMinBtn" onclick="bfSetKeyType('minor')">Minor</button>
+  </div>
+  <div class="note-picker" id="bfKeyRootPicker" style="display:none"></div>
   <div class="note-picker" id="bfNotePicker"></div>
   <div class="fb-scroll">
     <div class="fb-wrap"><div class="fb" id="bassFB"></div></div>
     <div class="card2" style="margin-top:8px;font-size:13px;color:var(--muted);line-height:1.6;">
-      <strong style="color:var(--gold);">Bass tip:</strong> The root note of any chord in your progression lives on this fretboard. Find the root, add the octave (2 strings up, 2 frets over) for a simple but effective bass line. Follow the kick drum rhythm to lock in the groove.
+      <strong style="color:var(--gold);">Bass tip:</strong> The root note of any chord in your progression lives on this fretboard. Find the root, add the octave (2 strings up, 2 frets over) for a simple but effective bass line. Follow the kick drum rhythm to lock in the groove.<br><br><strong style="color:var(--gold);">Keys:</strong> pick Major/Minor + a root above to see just the notes in that key — <span style="color:var(--gold);">gold</span> = root, <span style="color:var(--blue);">blue</span> = the rest of the scale.<br><br><strong style="color:var(--gold);">Tunings:</strong> switch between standard 4-string, drop D, and 5-string above.
     </div>
   </div>
 </div>
@@ -2507,14 +2528,26 @@ function drawFullNeckScale(key){
 }
 
 
-const FB_STRINGS_GUITAR=[{name:'E',open:4},{name:'A',open:9},{name:'D',open:2},{name:'G',open:7},{name:'B',open:11},{name:'e',open:4}];
-const FB_STRINGS_BASS=[{name:'E',open:4},{name:'A',open:9},{name:'D',open:2},{name:'G',open:7}];
+const TUNINGS_GUITAR={
+  standard:{label:'Standard',strings:[{name:'E',open:4},{name:'A',open:9},{name:'D',open:2},{name:'G',open:7},{name:'B',open:11},{name:'e',open:4}]},
+  dropD:{label:'Drop D',strings:[{name:'D',open:2},{name:'A',open:9},{name:'D',open:2},{name:'G',open:7},{name:'B',open:11},{name:'e',open:4}]},
+  openG:{label:'Open G',strings:[{name:'D',open:2},{name:'G',open:7},{name:'D',open:2},{name:'G',open:7},{name:'B',open:11},{name:'d',open:2}]},
+  openD:{label:'Open D',strings:[{name:'D',open:2},{name:'A',open:9},{name:'D',open:2},{name:'F#',open:6},{name:'A',open:9},{name:'d',open:2}]},
+  dadgad:{label:'DADGAD',strings:[{name:'D',open:2},{name:'A',open:9},{name:'D',open:2},{name:'G',open:7},{name:'A',open:9},{name:'d',open:2}]},
+  ebStandard:{label:'Eb Standard',strings:[{name:'Eb',open:3},{name:'Ab',open:8},{name:'Db',open:1},{name:'Gb',open:6},{name:'Bb',open:10},{name:'eb',open:3}]},
+  dStandard:{label:'D Standard',strings:[{name:'D',open:2},{name:'G',open:7},{name:'C',open:0},{name:'F',open:5},{name:'A',open:9},{name:'d',open:2}]},
+};
+const TUNINGS_BASS={
+  standard:{label:'Standard',strings:[{name:'E',open:4},{name:'A',open:9},{name:'D',open:2},{name:'G',open:7}]},
+  dropD:{label:'Drop D',strings:[{name:'D',open:2},{name:'A',open:9},{name:'D',open:2},{name:'G',open:7}]},
+  fiveString:{label:'5-String',strings:[{name:'B',open:11},{name:'E',open:4},{name:'A',open:9},{name:'D',open:2},{name:'G',open:7}]},
+};
 const FRET_MARKERS=[3,5,7,9,12,15,17,19];
 const CHROM_SHARP=['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
 const CHROM_FLAT=['C','Db','D','Eb','E','F','Gb','G','Ab','A','Bb','B'];
 
-let fbState={notation:'sharp',view:'all',highlight:null};
-let bfState={notation:'sharp',view:'all',highlight:null};
+let fbState={notation:'sharp',view:'all',highlight:null,tuning:'standard',key:null};
+let bfState={notation:'sharp',view:'all',highlight:null,tuning:'standard',key:null};
 
 function fbNote(open,fret,flat){return flat?CHROM_FLAT[(open+fret)%12]:CHROM_SHARP[(open+fret)%12];}
 function isSharpNote(n){return n.includes('#')||n.includes('b')&&n.length>1;}
@@ -2522,6 +2555,25 @@ function isSharpNote(n){return n.includes('#')||n.includes('b')&&n.length>1;}
 function buildFretboard(containerId,strings,state,frets,prefix){
   const useFlat=state.notation==='flat';
   const chrom=useFlat?CHROM_FLAT:CHROM_SHARP;
+  const key=state.key;
+  const rootIdx=key?CHROM_SHARP.indexOf(key.root):null;
+  const scaleIntervals=key?(key.type==='major'?SCALE_INTERVALS.natural:SCALE_INTERVALS.minorNat):null;
+  function cellHtml(idx,wrapCls){
+    const n=chrom[idx%12];
+    const sharp=isSharpNote(n);
+    let cls=sharp?'shp':'nat';
+    let hide=false;
+    if(state.view==='naturals'&&sharp)hide=true;
+    if(state.view==='sharps'&&!sharp)hide=true;
+    if(key){
+      const interval=((idx-rootIdx)%12+12)%12;
+      if(interval===0){cls='kroot';hide=false;}
+      else if(scaleIntervals.includes(interval)){cls='kscale';hide=false;}
+      else{cls='kout';hide=true;}
+    }
+    if(state.highlight&&n===state.highlight)cls='root';
+    return `<div class="${wrapCls}"><div class="ndot ${cls}${hide?' hidden':''}" onclick="${prefix}Highlight('${n}')">${n}</div></div>`;
+  }
   let html='';
   // numbers
   html+=`<div class="fb-nums"><div class="fb-nsp"></div><div class="fb-nnut"></div><div class="fb-ncells">`;
@@ -2529,29 +2581,14 @@ function buildFretboard(containerId,strings,state,frets,prefix){
   for(let f=1;f<=frets;f++)html+=`<div class="fn">${f}</div>`;
   html+='</div></div>';
   html+='<div class="fb-strings">';
-  strings.forEach(str=>{
+  strings.slice().reverse().forEach(str=>{
     html+=`<div class="fb-str">`;
     html+=`<div class="fb-slbl">${str.name}</div>`;
     html+=`<div style="width:8px;height:30px;background:#f5f0e0;border-radius:3px;margin-right:8px;flex-shrink:0;"></div>`;
     html+=`<div class="fb-sline"><div class="fb-wire"></div><div class="fb-cells">`;
-    // open
-    const openN=fbNote(str.open,0,useFlat);
-    const openSharp=isSharpNote(openN);
-    let openCls=openSharp?'shp':'nat';
-    let openHide=false;
-    if(state.view==='naturals'&&openSharp)openHide=true;
-    if(state.view==='sharps'&&!openSharp)openHide=true;
-    if(state.highlight&&openN===state.highlight)openCls='root';
-    html+=`<div class="fb-open"><div class="ndot ${openCls}${openHide?' hidden':''}" onclick="${prefix}Highlight('${openN}')">${openN}</div></div>`;
+    html+=cellHtml(str.open,'fb-open');
     for(let f=1;f<=frets;f++){
-      const n=fbNote(str.open,f,useFlat);
-      const sharp=isSharpNote(n);
-      let cls=sharp?'shp':'nat';
-      let hide=false;
-      if(state.view==='naturals'&&sharp)hide=true;
-      if(state.view==='sharps'&&!sharp)hide=true;
-      if(state.highlight&&n===state.highlight)cls='root';
-      html+=`<div class="fb-cell"><div class="ndot ${cls}${hide?' hidden':''}" onclick="${prefix}Highlight('${n}')">${n}</div></div>`;
+      html+=cellHtml(str.open+f,'fb-cell');
     }
     html+='</div></div></div>';
   });
@@ -2570,8 +2607,27 @@ function buildFretboard(containerId,strings,state,frets,prefix){
 function buildNotePicker(pickerEl,state,prefix,chrom){
   pickerEl.innerHTML=chrom.map(n=>`<button class="npbtn${state.highlight===n?' active':''}" onclick="${prefix}Highlight('${n}')">${n}</button>`).join('');
 }
-function fbView(v,btn){fbState.view=v;document.querySelectorAll('#sc-fretboard .fbtn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');rebuildGuitar();}
-function fbToggleNotation(){fbState.notation=fbState.notation==='sharp'?'flat':'sharp';document.getElementById('fbNotationBtn').textContent=fbState.notation==='sharp'?'Show ♭':'Show ♯';rebuildGuitar();}
+function buildTuningPicker(pickerEl,tunings,state,prefix){
+  pickerEl.innerHTML=Object.keys(tunings).map(k=>`<button class="fbtn${state.tuning===k?' active':''}" onclick="${prefix}SetTuning('${k}')">${tunings[k].label}</button>`).join('');
+}
+function renderKeyControls(prefix,state){
+  const active=!!state.key;
+  document.getElementById(`${prefix}KeyOffBtn`).classList.toggle('active',!active);
+  document.getElementById(`${prefix}KeyMajBtn`).classList.toggle('active',active&&state.key.type==='major');
+  document.getElementById(`${prefix}KeyMinBtn`).classList.toggle('active',active&&state.key.type==='minor');
+  const rootPicker=document.getElementById(`${prefix}KeyRootPicker`);
+  rootPicker.style.display=active?'flex':'none';
+  if(active){
+    const labels=state.notation==='flat'?CHROM_FLAT:CHROM_SHARP;
+    rootPicker.innerHTML=CHROM_SHARP.map((r,i)=>`<button class="npbtn${state.key.root===r?' active':''}" onclick="${prefix}SetKeyRoot('${r}')">${labels[i]}</button>`).join('');
+  }
+}
+function fbView(v,btn){fbState.view=v;document.querySelectorAll('#fbViewRow .fbtn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');rebuildGuitar();}
+function fbSetTuning(k){fbState.tuning=k;buildTuningPicker(document.getElementById('fbTuningRow'),TUNINGS_GUITAR,fbState,'fb');rebuildGuitar();}
+function fbSetKeyType(type){fbState.key=fbState.key?{...fbState.key,type}:{root:'C',type};renderKeyControls('fb',fbState);rebuildGuitar();}
+function fbSetKeyRoot(root){if(fbState.key){fbState.key.root=root;renderKeyControls('fb',fbState);rebuildGuitar();}}
+function fbKeyOff(){fbState.key=null;renderKeyControls('fb',fbState);rebuildGuitar();}
+function fbToggleNotation(){fbState.notation=fbState.notation==='sharp'?'flat':'sharp';document.getElementById('fbNotationBtn').textContent=fbState.notation==='sharp'?'Show ♭':'Show ♯';renderKeyControls('fb',fbState);rebuildGuitar();}
 function fbHighlight(n){
   fbState.highlight=fbState.highlight===n?null:n;
   rebuildGuitar();
@@ -2633,15 +2689,21 @@ function openFbChordFromNote(root, quality, label){
 }
 function rebuildGuitar(){
   const chrom=fbState.notation==='flat'?CHROM_FLAT:CHROM_SHARP;
-  buildFretboard('guitarFB',FB_STRINGS_GUITAR,fbState,19,'fb');
+  const strings=TUNINGS_GUITAR[fbState.tuning].strings;
+  buildFretboard('guitarFB',strings,fbState,19,'fb');
   buildNotePicker(document.getElementById('fbNotePicker'),fbState,'fb',chrom);
 }
-function bfView(v,btn){bfState.view=v;document.querySelectorAll('#sc-bass-fret .fbtn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');rebuildBass();}
-function bfToggleNotation(){bfState.notation=bfState.notation==='sharp'?'flat':'sharp';document.getElementById('bfNotationBtn').textContent=bfState.notation==='sharp'?'Show ♭':'Show ♯';rebuildBass();}
+function bfView(v,btn){bfState.view=v;document.querySelectorAll('#bfViewRow .fbtn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');rebuildBass();}
+function bfSetTuning(k){bfState.tuning=k;buildTuningPicker(document.getElementById('bfTuningRow'),TUNINGS_BASS,bfState,'bf');rebuildBass();}
+function bfSetKeyType(type){bfState.key=bfState.key?{...bfState.key,type}:{root:'C',type};renderKeyControls('bf',bfState);rebuildBass();}
+function bfSetKeyRoot(root){if(bfState.key){bfState.key.root=root;renderKeyControls('bf',bfState);rebuildBass();}}
+function bfKeyOff(){bfState.key=null;renderKeyControls('bf',bfState);rebuildBass();}
+function bfToggleNotation(){bfState.notation=bfState.notation==='sharp'?'flat':'sharp';document.getElementById('bfNotationBtn').textContent=bfState.notation==='sharp'?'Show ♭':'Show ♯';renderKeyControls('bf',bfState);rebuildBass();}
 function bfHighlight(n){bfState.highlight=bfState.highlight===n?null:n;rebuildBass();}
 function rebuildBass(){
   const chrom=bfState.notation==='flat'?CHROM_FLAT:CHROM_SHARP;
-  buildFretboard('bassFB',FB_STRINGS_BASS,bfState,17,'bf');
+  const strings=TUNINGS_BASS[bfState.tuning].strings;
+  buildFretboard('bassFB',strings,bfState,17,'bf');
   buildNotePicker(document.getElementById('bfNotePicker'),bfState,'bf',chrom);
 }
 
@@ -2653,6 +2715,10 @@ buildKeyGrid();
 renderChords();
 renderTriads();
 initCof();
+buildTuningPicker(document.getElementById('fbTuningRow'),TUNINGS_GUITAR,fbState,'fb');
+buildTuningPicker(document.getElementById('bfTuningRow'),TUNINGS_BASS,bfState,'bf');
+renderKeyControls('fb',fbState);
+renderKeyControls('bf',bfState);
 rebuildGuitar();
 rebuildBass();
 </script>
