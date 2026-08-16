@@ -321,6 +321,21 @@ body{background:var(--bg);color:var(--text);font-family:"Outfit",sans-serif;font
 .ndot.hidden{opacity:0;pointer-events:none;}
 .ndot.kroot{background:var(--gold);color:#000;box-shadow:0 0 10px rgba(240,192,64,0.6);}
 .ndot.kscale{background:var(--blue);color:#000;}
+.ndot.dim{opacity:0.28;}
+.ndot.ctone-root{background:#fff;color:#000;box-shadow:0 0 12px rgba(255,255,255,0.8);opacity:1;}
+.ndot.ctone-3rd{background:var(--teal);color:#000;box-shadow:0 0 8px rgba(64,208,192,0.7);opacity:1;}
+.ndot.ctone-5th{background:var(--orange);color:#000;box-shadow:0 0 8px rgba(240,128,64,0.7);opacity:1;}
+.fb-chordbtn{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;background:var(--surf);border:1px solid var(--bdr);border-radius:7px;padding:6px 11px;min-width:46px;cursor:pointer;transition:all 0.15s;}
+.fb-chordbtn:active{transform:scale(0.94);}
+.fb-chordbtn .cd-num{font-size:10px;color:var(--muted);letter-spacing:0.5px;line-height:1.3;}
+.fb-chordbtn .cd-name{font-size:14px;font-weight:700;color:var(--text);margin-top:1px;line-height:1.2;}
+.fb-chordbtn.active{background:var(--gold);border-color:var(--gold);}
+.fb-chordbtn.active .cd-num,.fb-chordbtn.active .cd-name{color:#000;}
+.fb-chordbtn .cd-shapes{position:absolute;top:-8px;right:-8px;width:22px;height:22px;border-radius:50%;background:#000;border:1px solid var(--bdr2);display:flex;align-items:center;justify-content:center;font-size:11px;box-shadow:0 2px 6px rgba(0,0,0,0.4);}
+.fb-chordbtn .cd-shapes:active{transform:scale(0.9);}
+.fb-chord-legend{display:flex;gap:14px;padding:0 20px 12px;flex-wrap:wrap;font-size:11px;color:var(--muted);}
+.fb-chord-legend span{display:inline-flex;align-items:center;gap:5px;}
+.fb-chord-legend i{width:10px;height:10px;border-radius:50%;display:inline-block;}
 .fb-rowlabel{font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);padding:12px 20px 0;flex-shrink:0;}
 .fb-markers{display:flex;padding:6px 32px 0;padding-left:calc(32px + 44px + 8px + 8px);}
 .fb-mc{flex:1;display:flex;justify-content:center;border-left:3px solid transparent;}
@@ -756,6 +771,13 @@ body{background:var(--bg);color:var(--text);font-family:"Outfit",sans-serif;font
     <button class="fbtn" id="fbKeyMinBtn" onclick="fbSetKeyType('minor')">Minor</button>
   </div>
   <div class="note-picker" id="fbKeyRootPicker" style="display:none"></div>
+  <div id="fbChordRowLabel" class="fb-rowlabel" style="display:none">Chords in this key — tap to play over the scale</div>
+  <div class="fb-controls" id="fbChordRow" style="display:none"></div>
+  <div id="fbChordLegend" class="fb-chord-legend" style="display:none">
+    <span><i style="background:#fff"></i>Chord root</span>
+    <span><i style="background:var(--teal)"></i>3rd</span>
+    <span><i style="background:var(--orange)"></i>5th</span>
+  </div>
   <div class="note-picker" id="fbNotePicker"></div>
   <div id="fbChordPanel" class="fb-chord-panel" style="display:none">
     <div class="fb-chord-panel-title">⬆ CHORDS CONTAINING THIS NOTE — TAP TO OPEN</div>
@@ -2550,8 +2572,53 @@ const FRET_MARKERS=[3,5,7,9,12,15,17,19];
 const CHROM_SHARP=['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
 const CHROM_FLAT=['C','Db','D','Eb','E','F','Gb','G','Ab','A','Bb','B'];
 
-let fbState={notation:'sharp',view:'all',highlight:null,tuning:'standard',key:null};
+let fbState={notation:'sharp',view:'all',highlight:null,tuning:'standard',key:null,chordTones:null};
 let bfState={notation:'sharp',view:'all',highlight:null,tuning:'standard',key:null};
+
+function getDiatonicChords(rootNote,scaleType){
+  const scaleIntervals=scaleType==='major'?SCALE_INTERVALS.natural:SCALE_INTERVALS.minorNat;
+  const rootIdx=CHROM_SHARP.indexOf(rootNote);
+  const numerals=scaleType==='major'?['I','ii','iii','IV','V','vi','vii°']:['i','ii°','III','iv','v','VI','VII'];
+  const chords=[];
+  for(let i=0;i<7;i++){
+    const rootInt=scaleIntervals[i];
+    const thirdInt=scaleIntervals[(i+2)%7]+((i+2>=7)?12:0);
+    const fifthInt=scaleIntervals[(i+4)%7]+((i+4>=7)?12:0);
+    const thirdSemi=((thirdInt-rootInt)+12)%12;
+    const fifthSemi=((fifthInt-rootInt)+12)%12;
+    let quality='major',suffix='';
+    if(thirdSemi===3&&fifthSemi===7){quality='minor';suffix='m';}
+    else if(thirdSemi===3&&fifthSemi===6){quality='dim';suffix='°';}
+    else if(thirdSemi===4&&fifthSemi===8){quality='aug';suffix='+';}
+    const chordRoot=CHROM_SHARP[(rootIdx+rootInt)%12];
+    chords.push({degree:i,numeral:numerals[i],root:chordRoot,quality,suffix,thirdSemi,fifthSemi,label:chordRoot+suffix});
+  }
+  return chords;
+}
+function renderChordRow(prefix,state){
+  const row=document.getElementById(`${prefix}ChordRow`);
+  const label=document.getElementById(`${prefix}ChordRowLabel`);
+  const legend=document.getElementById(`${prefix}ChordLegend`);
+  if(!row)return;
+  if(!state.key){row.style.display='none';label.style.display='none';legend.style.display='none';row.innerHTML='';return;}
+  const labels=state.notation==='flat'?CHROM_FLAT:CHROM_SHARP;
+  const chords=getDiatonicChords(state.key.root,state.key.type);
+  row.style.display='flex';label.style.display='block';
+  legend.style.display=state.chordTones?'flex':'none';
+  row.innerHTML=chords.map(c=>{
+    const active=state.chordTones&&state.chordTones.degree===c.degree;
+    const dispRoot=labels[CHROM_SHARP.indexOf(c.root)];
+    const shapesBtn=active?`<div class="cd-shapes" onclick="event.stopPropagation();${prefix}ShowChordShapes(${c.degree})" title="See fingering shapes">🎸</div>`:'';
+    return `<div class="fb-chordbtn${active?' active':''}" onclick="${prefix}ToggleChord(${c.degree})"><div class="cd-num">${c.numeral}</div><div class="cd-name">${dispRoot}${c.suffix}</div>${shapesBtn}</div>`;
+  }).join('');
+}
+function fbToggleChord(degree){
+  const chords=getDiatonicChords(fbState.key.root,fbState.key.type);
+  const c=chords[degree];
+  fbState.chordTones=(fbState.chordTones&&fbState.chordTones.degree===degree)?null:c;
+  renderChordRow('fb',fbState);
+  rebuildGuitar();
+}
 
 function fbNote(open,fret,flat){return flat?CHROM_FLAT[(open+fret)%12]:CHROM_SHARP[(open+fret)%12];}
 function isSharpNote(n){return n.includes('#')||n.includes('b')&&n.length>1;}
@@ -2576,7 +2643,16 @@ function buildFretboard(containerId,strings,state,frets,prefix){
       else{cls='kout';hide=true;}
     }
     if(state.highlight&&n===state.highlight)cls='root';
-    return `<div class="${wrapCls}"><div class="ndot ${cls}${hide?' hidden':''}" onclick="${prefix}Highlight('${n}')">${n}</div></div>`;
+    let extraCls='';
+    if(key&&state.chordTones&&!hide){
+      const chRootIdx=CHROM_SHARP.indexOf(state.chordTones.root);
+      const chInterval=((idx-chRootIdx)%12+12)%12;
+      if(chInterval===0)extraCls=' ctone-root';
+      else if(chInterval===state.chordTones.thirdSemi)extraCls=' ctone-3rd';
+      else if(chInterval===state.chordTones.fifthSemi)extraCls=' ctone-5th';
+      else extraCls=' dim';
+    }
+    return `<div class="${wrapCls}"><div class="ndot ${cls}${extraCls}${hide?' hidden':''}" onclick="${prefix}Highlight('${n}')">${n}</div></div>`;
   }
   let html='';
   // numbers
@@ -2628,10 +2704,10 @@ function renderKeyControls(prefix,state){
 }
 function fbView(v,btn){fbState.view=v;document.querySelectorAll('#fbViewRow .fbtn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');rebuildGuitar();}
 function fbSetTuning(k){fbState.tuning=k;buildTuningPicker(document.getElementById('fbTuningRow'),TUNINGS_GUITAR,fbState,'fb');rebuildGuitar();}
-function fbSetKeyType(type){fbState.key=fbState.key?{...fbState.key,type}:{root:'C',type};renderKeyControls('fb',fbState);rebuildGuitar();}
-function fbSetKeyRoot(root){if(fbState.key){fbState.key.root=root;renderKeyControls('fb',fbState);rebuildGuitar();}}
-function fbKeyOff(){fbState.key=null;renderKeyControls('fb',fbState);rebuildGuitar();}
-function fbToggleNotation(){fbState.notation=fbState.notation==='sharp'?'flat':'sharp';document.getElementById('fbNotationBtn').textContent=fbState.notation==='sharp'?'Show ♭':'Show ♯';renderKeyControls('fb',fbState);rebuildGuitar();}
+function fbSetKeyType(type){fbState.key=fbState.key?{...fbState.key,type}:{root:'C',type};fbState.chordTones=null;renderKeyControls('fb',fbState);renderChordRow('fb',fbState);rebuildGuitar();}
+function fbSetKeyRoot(root){if(fbState.key){fbState.key.root=root;fbState.chordTones=null;renderKeyControls('fb',fbState);renderChordRow('fb',fbState);rebuildGuitar();}}
+function fbKeyOff(){fbState.key=null;fbState.chordTones=null;renderKeyControls('fb',fbState);renderChordRow('fb',fbState);rebuildGuitar();}
+function fbToggleNotation(){fbState.notation=fbState.notation==='sharp'?'flat':'sharp';document.getElementById('fbNotationBtn').textContent=fbState.notation==='sharp'?'Show ♭':'Show ♯';renderKeyControls('fb',fbState);renderChordRow('fb',fbState);rebuildGuitar();}
 function fbHighlight(n){
   fbState.highlight=fbState.highlight===n?null:n;
   rebuildGuitar();
@@ -2658,7 +2734,7 @@ function fbHighlight(n){
   chips.innerHTML=unique.map(s=>`<div class="fb-chord-chip ${s.cls}" onclick="openFbChordFromNote('${s.root}','${s.quality}','${s.label}')">${s.label}</div>`).join('');
   panel.style.display='block';
 }
-function openFbChordFromNote(root, quality, label){
+function openFbChordFromNote(root, quality, label, customTip){
   // Build a synthetic chord entry and open the CAGED modal directly
   const displayN={'C#':'C#/Db','D#':'D#/Eb','F#':'F#/Gb','G#':'G#/Ab','A#':'A#/Bb'}[root]||root;
   const qualLabel={'major':'Major','minor':'Minor','7':'Dominant 7th','m7':'Minor 7th'}[quality]||quality;
@@ -2678,6 +2754,7 @@ function openFbChordFromNote(root, quality, label){
   const knownChord = CHORDS.find(c=>c.id===label)||CHORDS.find(c=>c.id===root)||CHORDS.find(c=>c.id===root+'m');
   const knownSvgs = knownChord ? knownChord.variations.map(v=>`<div class="var-card"><div class="var-label">${v.label}</div>${drawChordSVG(v,160,170,false)}</div>`).join('') : '';
   const knownSection = knownSvgs ? `<div style="font-family:'Bebas Neue',sans-serif;font-size:14px;letter-spacing:1px;color:var(--muted);margin-bottom:10px;">COMMON VOICINGS</div><div class="variations-grid" style="margin-bottom:18px;">${knownSvgs}</div>` : '';
+  const tip = customTip || `<strong>Tip:</strong> The note you tapped (${fbState.highlight}) appears in all of these chord shapes. Use whichever position fits where you're already playing on the neck.`;
 
   document.getElementById('chordModalContent').innerHTML=`
     <div class="cm-handle"></div>
@@ -2687,9 +2764,20 @@ function openFbChordFromNote(root, quality, label){
     <div style="font-family:'Bebas Neue',sans-serif;font-size:14px;letter-spacing:1px;color:var(--muted);margin-bottom:8px;">🎸 CAGED POSITIONS</div>
     <div class="caged-intro">Every way to play ${label} across the fretboard. Scroll sideways →</div>
     <div class="caged-scroll">${cards}</div>
-    <div class="caged-tip-box"><strong>Tip:</strong> The note you tapped (${fbState.highlight}) appears in all of these chord shapes. Use whichever position fits where you're already playing on the neck.</div>
+    <div class="caged-tip-box">${tip}</div>
     <button class="btn-ghost" style="margin-top:16px" onclick="closeChordModal()">CLOSE</button>`;
   document.getElementById('chordModal').classList.add('show');
+}
+function fbShowChordShapes(degree){
+  const chords=getDiatonicChords(fbState.key.root,fbState.key.type);
+  const c=chords[degree];
+  if(c.quality==='dim'||c.quality==='aug'){
+    // No moveable CAGED shapes defined for dim/aug — fall back to the plain chord library entry if one exists
+    openChordModal(c.label);
+    return;
+  }
+  const tip=`<strong>Tip:</strong> This is the ${c.numeral} chord in ${fbState.key.root} ${fbState.key.type} — the same root/3rd/5th notes highlighted on the fretboard, shown here as playable shapes. Pick whichever position is closest to where you're already playing.`;
+  openFbChordFromNote(c.root, c.quality, c.label, tip);
 }
 function rebuildGuitar(){
   const chrom=fbState.notation==='flat'?CHROM_FLAT:CHROM_SHARP;
